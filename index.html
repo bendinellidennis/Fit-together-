@@ -157,6 +157,26 @@ main{max-width:720px;padding:14px 14px 108px}
 .recordItem{display:flex;justify-content:space-between;gap:10px;border-top:1px solid #223147;padding:9px 0;font-size:12px}
 .recordItem:first-child{border-top:0}
 
+
+/* V13 NUTRITION & RECOVERY */
+.nutriTabs{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:10px 0}
+.nutriTabs button{font-size:10px;padding:9px 4px}
+.nutriTabs button.on{background:linear-gradient(135deg,#6e4cff,#9d43ff)}
+.nutriGrid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.nutriCard{background:#0d1723;border:1px solid #26374e;border-radius:15px;padding:12px}
+.nutriCard b{display:block;font-size:18px}
+.nutriCard small{color:#9caabb}
+.checkRow{display:flex;align-items:center;justify-content:space-between;gap:10px;border-top:1px solid #223247;padding:10px 0}
+.checkRow:first-child{border-top:0}
+.checkBtn{min-width:44px;padding:8px 10px}
+.checkBtn.done{background:#185331;color:#c5ffda}
+.waterBar{height:10px;background:#1b2735;border-radius:99px;overflow:hidden;margin-top:8px}.waterBar i{display:block;height:100%;background:linear-gradient(90deg,#39a9ff,#32d17c);width:0}
+.recoveryScore{width:100px;height:100px;border-radius:50%;display:grid;place-items:center;background:conic-gradient(#8c55ff var(--r,0%),#1a2635 0);position:relative}
+.recoveryScore:after{content:"";position:absolute;inset:11px;border-radius:50%;background:#0e1723}
+.recoveryScore span{z-index:2;font-size:24px;font-weight:950}
+.suppBox{background:linear-gradient(145deg,#10182a,#18142b);border:1px solid #6146aa;border-radius:16px;padding:13px;margin-top:10px}
+.foodTag{display:inline-block;background:#172536;border-radius:999px;padding:6px 9px;margin:3px;font-size:11px}
+
 </style></head>
 <body>
 <main>
@@ -257,9 +277,19 @@ main{max-width:720px;padding:14px 14px 108px}
  <div id="togetherExerciseView"></div>
 </section>
 <section id="nutrition" class="hidden">
-<div class="card pad"><h2>🥗 Nutrizione & recupero</h2><p class="note">La base resta alimentazione completa, acqua e sonno. Gli integratori sono opzionali.</p></div>
-<div class="card pad live"><h3>Per te</h3><p><b>Proteine:</b> shake solo per comodità se serve. <b>Creatina monoidrato:</b> molto studiata negli adulti per forza e sforzi intensi ripetuti; non è obbligatoria. Con patologie o farmaci, verifica prima con medico/farmacista.</p><p><b>BCAA:</b> normalmente aggiungono poco se le proteine totali sono già adeguate.</p></div>
-<div class="card pad warn"><h3>Per tua figlia, 16 anni</h3><p>Essere sportiva consente un programma serio, ma l'app non prescrive automaticamente creatina, BCAA o pre-workout a una minorenne. Priorità a pasti completi e, se serve un supplemento specifico, valutazione con pediatra/dietista sportivo.</p></div>
+<div class="card pad">
+  <div class="row" style="display:flex;justify-content:space-between;align-items:center">
+    <div><h2 style="margin:0">🥗 Nutrizione & Recupero</h2><div class="sub" id="nutriProfileLabel"></div></div>
+    <button onclick="selectProfile(profile==='dad'?'girl':'dad');renderNutrition()">⇄ Profilo</button>
+  </div>
+  <div class="nutriTabs">
+    <button id="ntToday" class="on" onclick="setNutriTab('today')">OGGI</button>
+    <button id="ntFood" onclick="setNutriTab('food')">ALIMENTI</button>
+    <button id="ntRecovery" onclick="setNutriTab('recovery')">RECUPERO</button>
+    <button id="ntSupp" onclick="setNutriTab('supp')">INTEGRATORI</button>
+  </div>
+  <div id="nutriContent"></div>
+</div>
 </section>
 
 <section id="progressPage" class="hidden">
@@ -715,9 +745,9 @@ function renderBodyDashboard(){
 }
 function setProgressTab(tab){
  progressTab=tab;
- const map={overview:"ptOverview",diary:"ptDiary",exercises:"ptExercises",body:"ptBody"};
- Object.values(map).forEach(id=>document.getElementById(id)?.classList.remove("on"));
- document.getElementById(map[tab])?.classList.add("on");
+ const ids={overview:"ptOverview",diary:"ptDiary",exercises:"ptExercises",body:"ptBody"};
+ Object.values(ids).forEach(id=>document.getElementById(id)?.classList.remove("on"));
+ document.getElementById(ids[tab])?.classList.add("on");
  renderProgress();
 }
 function renderProgress(){
@@ -963,10 +993,104 @@ function exitSession(){
    show("home");
  }
 }
-function show(id){["home","session","together","nutrition","progressPage","safety"].forEach(x=>document.getElementById(x).classList.toggle("hidden",x!==id));if(id==="progressPage"){progressTab="overview";renderProgress();}if(id==="home")renderHome()}
+
+let nutriTab="today";
+
+function nutriKey(){return "ftNutrition_"+profile}
+function nutriDb(){
+ try{return JSON.parse(localStorage.getItem(nutriKey())||'{"days":{},"settings":{}}')}catch(e){return {days:{},settings:{}}}
+}
+function saveNutriDb(d){localStorage.setItem(nutriKey(),JSON.stringify(d))}
+function todayKey(){return new Date().toISOString().slice(0,10)}
+function nutriToday(){
+ const d=nutriDb(),k=todayKey();
+ if(!d.days[k])d.days[k]={water:0,breakfast:false,lunch:false,dinner:false,snack:false,proteinMeals:0,fruitVeg:0,pre:false,post:false,sleep:"",energy:0};
+ return {db:d,key:k,day:d.days[k]};
+}
+function setNutriTab(tab){
+ nutriTab=tab;
+ const ids={today:"ntToday",food:"ntFood",recovery:"ntRecovery",supp:"ntSupp"};
+ Object.values(ids).forEach(id=>document.getElementById(id)?.classList.remove("on"));
+ document.getElementById(ids[tab])?.classList.add("on");
+ renderNutrition();
+}
+function toggleNutri(field){
+ const x=nutriToday();x.day[field]=!x.day[field];saveNutriDb(x.db);renderNutrition();
+}
+function addNutri(field,delta,max=99){
+ const x=nutriToday();x.day[field]=Math.max(0,Math.min(max,(Number(x.day[field])||0)+delta));saveNutriDb(x.db);renderNutrition();
+}
+function saveRecovery(){
+ const x=nutriToday();
+ const sleep=document.getElementById("sleepHours")?.value.trim()||"";
+ const energy=Number(document.getElementById("energyLevel")?.value||0);
+ x.day.sleep=sleep;x.day.energy=energy;saveNutriDb(x.db);renderNutrition();
+}
+function proteinGuidance(){
+ if(profile==="girl")return {title:"Proteine: approccio alimentare",text:"Niente target automatici in grammi: distribuisci fonti proteiche normali nei pasti principali e negli spuntini in base a fame, attività e indicazioni familiari/professionali."};
+ const body=bodyDb?.()||{records:[]};
+ const last=body.records?.[body.records.length-1];
+ const kg=parseFloat(String(last?.weight||72).replace(",","."));
+ const lo=Math.round(kg*1.4),hi=Math.round(kg*1.8);
+ return {title:"Proteine indicative",text:`Con ${kg||72} kg, un intervallo pratico per un adulto sportivo può essere circa ${lo}–${hi} g al giorno, distribuiti nei pasti. È una guida generale, non una prescrizione.`};
+}
+function recoveryScoreValue(day){
+ let score=0;
+ if(day.breakfast)score+=10;if(day.lunch)score+=10;if(day.dinner)score+=10;
+ score+=Math.min(20,(day.water||0)*4);
+ score+=Math.min(20,(day.proteinMeals||0)*5);
+ score+=Math.min(15,(day.fruitVeg||0)*3);
+ const sleep=parseFloat(day.sleep||0);if(sleep>=7)score+=15;else if(sleep>=6)score+=10;else if(sleep>0)score+=5;
+ return Math.min(100,score);
+}
+function renderNutrition(){
+ const lab=document.getElementById("nutriProfileLabel");if(lab)lab.textContent=profile==="dad"?"Profilo: TU":"Profilo: FIGLIA";
+ const box=document.getElementById("nutriContent");if(!box)return;
+ const x=nutriToday(),d=x.day,teen=profile==="girl";
+ if(nutriTab==="today"){
+   const waterGoal=teen?6:8;
+   box.innerHTML=`<div class="nutriGrid">
+    <div class="nutriCard"><b>💧 ${d.water||0}/${waterGoal}</b><small>Bicchieri acqua</small><div class="waterBar"><i style="width:${Math.min(100,(d.water||0)/waterGoal*100)}%"></i></div><div style="margin-top:8px"><button onclick="addNutri('water',-1)">−</button> <button class="primary" onclick="addNutri('water',1)">+ Acqua</button></div></div>
+    <div class="nutriCard"><b>🥚 ${d.proteinMeals||0}</b><small>Pasti con fonte proteica</small><div style="margin-top:8px"><button onclick="addNutri('proteinMeals',-1)">−</button> <button class="primary" onclick="addNutri('proteinMeals',1,6)">+</button></div></div>
+    <div class="nutriCard"><b>🥦 ${d.fruitVeg||0}</b><small>Porzioni frutta/verdura</small><div style="margin-top:8px"><button onclick="addNutri('fruitVeg',-1)">−</button> <button class="primary" onclick="addNutri('fruitVeg',1,10)">+</button></div></div>
+    <div class="nutriCard"><b>${recoveryScoreValue(d)}%</b><small>Routine recupero</small></div>
+   </div>
+   <div class="card pad"><h3>Pasti di oggi</h3>
+    ${[["breakfast","Colazione"],["lunch","Pranzo"],["dinner","Cena"],["snack","Spuntino"]].map(([k,n])=>`<div class="checkRow"><span>${n}</span><button class="checkBtn ${d[k]?"done":""}" onclick="toggleNutri('${k}')">${d[k]?"✓":"○"}</button></div>`).join("")}
+   </div>
+   <div class="card pad"><h3>Intorno all'allenamento</h3>
+    <div class="checkRow"><span>⚡ Pasto/spuntino pre-workout</span><button class="checkBtn ${d.pre?"done":""}" onclick="toggleNutri('pre')">${d.pre?"✓":"○"}</button></div>
+    <div class="checkRow"><span>💪 Pasto/spuntino post-workout</span><button class="checkBtn ${d.post?"done":""}" onclick="toggleNutri('post')">${d.post?"✓":"○"}</button></div>
+   </div>`;
+ }else if(nutriTab==="food"){
+   const p=proteinGuidance();
+   box.innerHTML=`<div class="card pad"><h3>${p.title}</h3><p class="note">${p.text}</p></div>
+   <div class="card pad"><h3>Fonti pratiche</h3>
+    <span class="foodTag">🥚 Uova</span><span class="foodTag">🥛 Yogurt/latte</span><span class="foodTag">🐟 Pesce</span><span class="foodTag">🍗 Carne</span><span class="foodTag">🫘 Legumi</span><span class="foodTag">🧀 Formaggi</span><span class="foodTag">🥜 Frutta secca</span>
+   </div>
+   <div class="card pad"><h3>Pre-workout semplice</h3><p class="note">Pasto o spuntino digeribile con carboidrati + una fonte proteica, accompagnato da acqua. Evita di allenarti subito dopo pasti molto abbondanti.</p></div>
+   <div class="card pad"><h3>Post-workout</h3><p class="note">Non serve una finestra di pochi minuti: punta a un normale pasto con proteine, carboidrati, liquidi e frutta/verdura nelle ore successive.</p></div>`;
+ }else if(nutriTab==="recovery"){
+   const score=recoveryScoreValue(d);
+   box.innerHTML=`<div class="card pad"><div style="display:flex;align-items:center;gap:18px"><div class="recoveryScore" style="--r:${score}%"><span>${score}%</span></div><div><h3>Recupero di oggi</h3><p class="note">Basato sui dati che inserisci: pasti, acqua, proteine alimentari, frutta/verdura e sonno.</p></div></div></div>
+   <div class="card pad"><h3>Sonno & sensazioni</h3>
+    <label class="sub">Ore di sonno</label><input id="sleepHours" class="input" inputmode="decimal" value="${d.sleep||""}" placeholder="es. 7.5">
+    <label class="sub" style="display:block;margin-top:9px">Energia percepita 1–5</label><select id="energyLevel" class="input"><option value="0">—</option>${[1,2,3,4,5].map(v=>`<option value="${v}" ${Number(d.energy)===v?"selected":""}>${v}</option>`).join("")}</select>
+    <button class="green" style="width:100%;margin-top:10px" onclick="saveRecovery()">SALVA RECUPERO</button>
+   </div>`;
+ }else{
+   box.innerHTML=teen
+   ? `<div class="suppBox"><h3>Integratori – profilo 16 anni</h3><p class="note">L'app non prescrive automaticamente creatina, BCAA, pre-workout o dosaggi di supplementi a un minorenne. La priorità resta alimentazione completa, idratazione e sonno. Qualsiasi supplemento specifico va valutato con pediatra o dietista sportivo.</p></div>`
+   : `<div class="suppBox"><h3>Proteine in polvere</h3><p class="note">Sono semplicemente una fonte proteica comoda. Possono essere utili se con i pasti non raggiungi facilmente un apporto adeguato; non sono obbligatorie.</p></div>
+      <div class="suppBox"><h3>Creatina monoidrato</h3><p class="note">Negli adulti è uno degli integratori più studiati per forza e sforzi intensi ripetuti. Una dose comune negli studi è 3–5 g al giorno. Se hai patologie, problemi renali o assumi farmaci, verifica prima con medico/farmacista.</p></div>
+      <div class="suppBox"><h3>BCAA / amminoacidi</h3><p class="note">Se l'apporto totale di proteine complete è già adeguato, in genere aggiungono poco rispetto a cibo o proteine complete.</p></div>
+      <div class="suppBox"><h3>Pre-workout</h3><p class="note">Non necessario. Evita di affidarti a stimolanti per compensare sonno o recupero insufficienti.</p></div>`;
+ }
+}
+function show(id){["home","session","together","nutrition","progressPage","safety"].forEach(x=>document.getElementById(x).classList.toggle("hidden",x!==id));if(id==="progressPage"){progressTab="overview";renderProgress();if(id==="nutrition"){nutriTab="today";renderNutrition();}}if(id==="home")renderHome()}
 function renderHistory(){let ss=profileSessions().slice().reverse();history.innerHTML=ss.length?ss.map(s=>`<div class="card pad"><b>Allenamento ${s.day}</b><div class="sub">${new Date(s.ts).toLocaleString("it-IT")}</div><div class="chips"><span class="chip">⏱ ${fmtTime(s.durationSec)}</span><span class="chip">🔥 ${s.kcal} kcal stimate</span></div></div>`).join(""):'<p class="note">Ancora nessun allenamento registrato.</p>'}
 function openStats(){let s=stats();sheet.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center"><h2>Statistiche live</h2><button onclick="modal.classList.add('hidden')">✕</button></div><div class="statline"><div class="stat"><b>${s.sessions}</b><small>Allenamenti</small></div><div class="stat"><b>${fmtTime(s.totalSec)}</b><small>Tempo totale</small></div><div class="stat"><b>${s.kcal}</b><small>kcal stimate</small></div><div class="stat"><b>${s.streak}</b><small>Streak</small></div></div><div class="card pad"><b>Settimana</b><p>${s.weekDone}/3 allenamenti completati</p></div>`;modal.classList.remove("hidden")}
-function openSettings(){sheet.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center"><h2>Impostazioni</h2><button onclick="modal.classList.add('hidden')">✕</button></div><div class="card pad"><button style="width:100%" onclick="if(confirm('Azzero tutti i dati salvati?')){localStorage.removeItem('ftData');modal.classList.add('hidden');renderHome()}">Azzera tutti i dati</button></div><div class="card pad"><p class="note">I dati vengono salvati localmente su questo dispositivo/browser.</p><p class="note"><b>Versione: V12 Dashboard Fisica</b></p></div>`;modal.classList.remove("hidden")}
+function openSettings(){sheet.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center"><h2>Impostazioni</h2><button onclick="modal.classList.add('hidden')">✕</button></div><div class="card pad"><button style="width:100%" onclick="if(confirm('Azzero tutti i dati salvati?')){localStorage.removeItem('ftData');modal.classList.add('hidden');renderHome()}">Azzera tutti i dati</button></div><div class="card pad"><p class="note">I dati vengono salvati localmente su questo dispositivo/browser.</p><p class="note"><b>Versione: V13 Nutrizione & Recupero</b></p></div>`;modal.classList.remove("hidden")}
 function closeModal(e){if(e.target===modal)modal.classList.add("hidden")}
 renderHome();
 </script>
