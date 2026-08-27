@@ -273,6 +273,16 @@ main{max-width:720px;padding:14px 14px 108px}
 .challengeBox{background:linear-gradient(145deg,#101827,#19142c);border:1px solid #5d47a7;border-radius:16px;padding:13px;margin-top:12px}
 .challengeProgress{height:9px;background:#1a2635;border-radius:99px;overflow:hidden;margin-top:8px}.challengeProgress i{display:block;height:100%;background:linear-gradient(90deg,#7c50ff,#32d17c)}
 
+
+/* V20 GUIDED WARMUP & COOLDOWN */
+.phaseBox{background:linear-gradient(145deg,#101827,#18142b);border:1px solid #5e47a8;border-radius:18px;padding:14px;margin:12px 0}
+.phaseStep{background:#0d1723;border:1px solid #28384e;border-radius:15px;padding:12px;margin:9px 0}
+.phaseStep.active{outline:2px solid #8a5cff}
+.phaseStep.done{border-color:#2f8e55;color:#baffd0}
+.phaseTitle{font-size:22px;font-weight:950}
+.phaseTimer{font-size:42px;font-weight:950;text-align:center;margin:12px 0}
+.phaseProgress{height:9px;background:#1a2635;border-radius:99px;overflow:hidden;margin-top:8px}.phaseProgress i{display:block;height:100%;background:linear-gradient(90deg,#7c50ff,#32d17c)}
+
 </style><link rel="manifest" href="manifest.webmanifest">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -387,6 +397,14 @@ main{max-width:720px;padding:14px 14px 108px}
 <div id="workouts"></div>
 </section>
 
+
+<section id="phaseGuide" class="hidden">
+  <div class="guideTop">
+    <div class="guideRow"><button onclick="cancelPhase()">← Home</button><b id="phaseHeader">Preparazione</b><span class="chip" id="phaseCount">1/1</span></div>
+    <div class="guideProgress"><i id="phaseBar"></i></div>
+  </div>
+  <div id="phaseContent"></div>
+</section>
 <section id="session" class="hidden">
   <div class="guideTop">
     <div class="guideRow"><button onclick="exitSession()">← Home</button><b id="guideLabel">Allenamento guidato</b><span class="chip" id="sessionElapsed">00:00</span></div>
@@ -487,7 +505,7 @@ C:{name:"C • Mare Movimento",place:"Mare",img:"data:image/jpeg;base64,/9j/4AAQ
 ["Affondi",3,"8/lato",60,"Gambe • equilibrio","lunge","Passi stabili sulla sabbia compatta.","Evita superfici irregolari."],
 ["Plank",3,"20–40 sec",45,"Core","plank","Corpo in linea.","Stop quando perdi la posizione."]]}
 ,D:{name:"Upper Body & Posture",place:"Casa",mins:35,desc:"Parte alta e postura con tecnica controllata.",img:"https://images.pexels.com/photos/7900673/pexels-photo-7900673.jpeg?auto=compress&cs=tinysrgb&w=1200",ex:[["Shoulder press leggero",3,"8–12",60,"Spalle • tricipiti","shoulderpress","Usa bottiglie leggere, addome attivo e movimento lento sopra la testa.","Niente carichi elevati e niente compensi con la schiena."],["Push-up inclinato o completo",3,"8–12",60,"Petto • braccia","push","Scegli la variante che mantiene tecnica pulita.","Niente cedimento forzato."],["Rematore leggero",3,"10–12",60,"Schiena • braccia","row","Usa uno zaino molto leggero o bottiglie; tira verso il fianco lentamente.","Non usare slancio e non aumentare il carico troppo presto."],["Plank",3,"35–60 sec",60,"Core","plank","Addome e glutei attivi, corpo in linea.","Non lasciare cadere il bacino."]]},E:{name:"Glutes & Legs",place:"Casa / Mare",mins:40,desc:"Gambe, glutei e tecnica dell'anca.",img:"https://images.pexels.com/photos/8846119/pexels-photo-8846119.jpeg?auto=compress&cs=tinysrgb&w=1200",ex:[["Hip hinge tecnico",3,"10–12",60,"Glutei • posteriori","deadlift","Impara il movimento dell'anca con carico minimo o nullo: bacino indietro e schiena neutra.","Non inseguire il peso e non arrotondare la schiena."],["Affondo in avanti tecnico",3,"8/lato",60,"Gambe • equilibrio","lunge","Passo controllato, ginocchio stabile e ritorno senza fretta.","Usa un appoggio se serve e non forzare la profondità."],["Squat",4,"12–20",75,"Gambe • glutei","squat","Piedi stabili, ginocchia seguono le punte, discesa controllata.","Ginocchia verso l'interno o talloni sollevati."],["Calf raise",4,"15–25",45,"Polpacci","squat","Sali lentamente sulle punte e torna giù completo.","Non rimbalzare."]]},F:{name:"Athletic Express",place:"Casa",mins:25,desc:"Seduta breve e atletica con nuovi movimenti guidati.",img:"https://images.pexels.com/photos/8173441/pexels-photo-8173441.jpeg?auto=compress&cs=tinysrgb&w=1200",ex:[["Burpee tecnico",3,"5–8",60,"Total body • coordinazione","burpee","Esegui ogni fase separatamente e in controllo; il salto finale è opzionale.","Non accelerare se la tecnica peggiora."],["Shoulder press leggero",3,"8–12",60,"Spalle • tricipiti","shoulderpress","Usa bottiglie leggere, addome attivo e movimento lento sopra la testa.","Niente carichi elevati e niente compensi con la schiena."],["Squat",4,"12–20",75,"Gambe • glutei","squat","Piedi stabili, ginocchia seguono le punte, discesa controllata.","Ginocchia verso l'interno o talloni sollevati."],["Plank",3,"35–60 sec",60,"Core","plank","Addome e glutei attivi, corpo in linea.","Non lasciare cadere il bacino."]]},G:{name:"Beach Athletic",place:"Mare",mins:35,desc:"Allenamento atletico e controllato sulla sabbia compatta.",img:"https://images.pexels.com/photos/12199356/pexels-photo-12199356.jpeg?auto=compress&cs=tinysrgb&w=1200",ex:[["Burpee tecnico",3,"5–8",60,"Total body • coordinazione","burpee","Esegui ogni fase separatamente e in controllo; il salto finale è opzionale.","Non accelerare se la tecnica peggiora."],["Affondo in avanti tecnico",3,"8/lato",60,"Gambe • equilibrio","lunge","Passo controllato, ginocchio stabile e ritorno senza fretta.","Usa un appoggio se serve e non forzare la profondità."],["Push-up inclinato o completo",3,"8–12",60,"Petto • braccia","push","Scegli la variante che mantiene tecnica pulita.","Niente cedimento forzato."],["Squat pausa",3,"10–12",60,"Gambe","squat","Pausa breve in basso e risali controllata.","Nessun rimbalzo."]]},H:{name:"Strength & Technique",place:"Casa",mins:45,desc:"Forza generale con priorit\u00e0 assoluta alla tecnica.",img:"https://images.pexels.com/photos/14623707/pexels-photo-14623707.jpeg?auto=compress&cs=tinysrgb&w=1200",ex:[["Hip hinge tecnico",3,"10–12",60,"Glutei • posteriori","deadlift","Impara il movimento dell'anca con carico minimo o nullo: bacino indietro e schiena neutra.","Non inseguire il peso e non arrotondare la schiena."],["Shoulder press leggero",3,"8–12",60,"Spalle • tricipiti","shoulderpress","Usa bottiglie leggere, addome attivo e movimento lento sopra la testa.","Niente carichi elevati e niente compensi con la schiena."],["Rematore leggero",3,"10–12",60,"Schiena • braccia","row","Usa uno zaino molto leggero o bottiglie; tira verso il fianco lentamente.","Non usare slancio e non aumentare il carico troppo presto."],["Squat",4,"12–20",75,"Gambe • glutei","squat","Piedi stabili, ginocchia seguono le punte, discesa controllata.","Ginocchia verso l'interno o talloni sollevati."],["Plank",3,"35–60 sec",60,"Core","plank","Addome e glutei attivi, corpo in linea.","Non lasciare cadere il bacino."]]},I:{name:"Core & Balance",place:"Casa / Mare",mins:30,desc:"Core, equilibrio e coordinazione.",img:"https://images.pexels.com/photos/7510364/pexels-photo-7510364.jpeg?auto=compress&cs=tinysrgb&w=1200",ex:[["Affondo in avanti tecnico",3,"8/lato",60,"Gambe • equilibrio","lunge","Passo controllato, ginocchio stabile e ritorno senza fretta.","Usa un appoggio se serve e non forzare la profondità."],["Dead bug",3,"8–12/lato",45,"Core","plank","Schiena bassa stabile, movimento lento.","Non perdere il controllo lombare."],["Plank",3,"35–60 sec",60,"Core","plank","Addome e glutei attivi, corpo in linea.","Non lasciare cadere il bacino."],["Burpee tecnico",3,"5–8",60,"Total body • coordinazione","burpee","Esegui ogni fase separatamente e in controllo; il salto finale è opzionale.","Non accelerare se la tecnica peggiora."]]},J:{name:"Weekend Challenge",place:"Casa / Mare",mins:50,desc:"Seduta completa di fine settimana senza massimali.",img:"https://images.pexels.com/photos/8916202/pexels-photo-8916202.jpeg?auto=compress&cs=tinysrgb&w=1200",ex:[["Shoulder press leggero",3,"8–12",60,"Spalle • tricipiti","shoulderpress","Usa bottiglie leggere, addome attivo e movimento lento sopra la testa.","Niente carichi elevati e niente compensi con la schiena."],["Hip hinge tecnico",3,"10–12",60,"Glutei • posteriori","deadlift","Impara il movimento dell'anca con carico minimo o nullo: bacino indietro e schiena neutra.","Non inseguire il peso e non arrotondare la schiena."],["Rematore leggero",3,"10–12",60,"Schiena • braccia","row","Usa uno zaino molto leggero o bottiglie; tira verso il fianco lentamente.","Non usare slancio e non aumentare il carico troppo presto."],["Affondo in avanti tecnico",3,"8/lato",60,"Gambe • equilibrio","lunge","Passo controllato, ginocchio stabile e ritorno senza fretta.","Usa un appoggio se serve e non forzare la profondità."],["Burpee tecnico",3,"5–8",60,"Total body • coordinazione","burpee","Esegui ogni fase separatamente e in controllo; il salto finale è opzionale.","Non accelerare se la tecnica peggiora."],["Plank",3,"35–60 sec",60,"Core","plank","Addome e glutei attivi, corpo in linea.","Non lasciare cadere il bacino."]]}}};
-let profile=localStorage.getItem("ftProfile")||"dad", currentDay="A", exIndex=0, setDone=0, timerInt=null, sessionStarted=null, sessionTicker=null, repsLog=[], activeSeconds=0, sessionWorkout=null, togetherState=null, togetherTicker=null, togetherSeconds=0;
+let profile=localStorage.getItem("ftProfile")||"dad", currentDay="A", exIndex=0, setDone=0, timerInt=null, sessionStarted=null, sessionTicker=null, repsLog=[], activeSeconds=0, sessionWorkout=null, togetherState=null, togetherTicker=null, togetherSeconds=0, phaseState=null, phaseTicker=null;
 
 function db(){return JSON.parse(localStorage.getItem("ftData")||'{"sessions":[]}')}
 function saveDB(d){localStorage.setItem("ftData",JSON.stringify(d))}
@@ -662,6 +680,7 @@ function fitStorageKeys(){
       k==="ftTogetherDraft" ||
       k==="ftOfflineReady" ||
       k==="ftLastBackup" ||
+      k==="ftGuidedPhases" ||
       k.startsWith("ftDraft_") ||
       k.startsWith("ftBody_") ||
       k.startsWith("ftNutrition_") ||
@@ -1010,13 +1029,104 @@ function renderHome(){
  }).join("");
  renderAdaptiveSummary();
 }
-function start(day){
+
+function workoutFocus(w){
+ const text=(w.name+" "+w.desc+" "+w.ex.map(e=>e[4]).join(" ")).toLowerCase();
+ if(text.includes("gambe")||text.includes("glute")||text.includes("legs"))return "legs";
+ if(text.includes("core"))return "core";
+ if(text.includes("upper")||text.includes("petto")||text.includes("spalle")||text.includes("schiena"))return "upper";
+ return "full";
+}
+function warmupPlan(w){
+ const focus=workoutFocus(w);
+ const base=[
+   {name:"Marcia attiva",sec:45,tip:"Respira regolarmente e aumenta gradualmente il ritmo."},
+   {name:"Circonduzioni delle spalle",sec:30,tip:"Movimento ampio ma senza forzare."}
+ ];
+ const extra=focus==="legs"
+ ?[{name:"Squat a corpo libero",sec:40,tip:"Movimento controllato e senza carico."},{name:"Affondi alternati leggeri",sec:40,tip:"Passi corti e ginocchio stabile."}]
+ :focus==="upper"
+ ?[{name:"Push-up al muro",sec:35,tip:"Scalda petto e spalle senza affaticarti."},{name:"Scapole attive",sec:35,tip:"Avvicina e allontana le scapole lentamente."}]
+ :focus==="core"
+ ?[{name:"Cat-cow",sec:40,tip:"Mobilizza lentamente la colonna."},{name:"Dead bug facile",sec:35,tip:"Movimenti corti e controllati."}]
+ :[{name:"Squat leggero",sec:35,tip:"Scalda le gambe."},{name:"Plank alto dinamico",sec:30,tip:"Attiva core e spalle senza arrivare a fatica."}];
+ return [...base,...extra];
+}
+function cooldownPlan(w){
+ const focus=workoutFocus(w);
+ const common=[{name:"Respirazione lenta",sec:45,tip:"Inspira dal naso ed espira lentamente."}];
+ const extra=focus==="legs"
+ ?[{name:"Stretch quadricipiti",sec:40,tip:"20 secondi per lato, senza molleggiare."},{name:"Stretch posteriori",sec:40,tip:"Mantieni la schiena neutra."}]
+ :focus==="upper"
+ ?[{name:"Stretch petto",sec:40,tip:"Apri il petto delicatamente."},{name:"Stretch spalle",sec:40,tip:"20 secondi per lato."}]
+ :focus==="core"
+ ?[{name:"Child pose",sec:45,tip:"Respira e rilassa la schiena."},{name:"Rotazioni dolci",sec:35,tip:"Movimento lento, senza forzare."}]
+ :[{name:"Stretch total body",sec:45,tip:"Allunga senza arrivare al dolore."},{name:"Camminata lenta",sec:45,tip:"Lascia scendere gradualmente il battito."}];
+ return [...extra,...common];
+}
+function launchWarmup(day){
+ if(localStorage.getItem("ftGuidedPhases")==="0"){sessionWorkout=adaptiveWorkout(plans[profile][day]);beginWorkoutSession(day);return}
  currentDay=day;
  sessionWorkout=adaptiveWorkout(plans[profile][currentDay]);
+ phaseState={type:"warmup",day,steps:warmupPlan(sessionWorkout),index:0,left:0};
+ show("phaseGuide");renderPhase();
+}
+function renderPhase(){
+ const st=phaseState;if(!st)return;
+ const step=st.steps[st.index];
+ document.getElementById("phaseHeader").textContent=st.type==="warmup"?"🔥 Riscaldamento":"🧘 Defaticamento";
+ document.getElementById("phaseCount").textContent=`${st.index+1}/${st.steps.length}`;
+ document.getElementById("phaseBar").style.width=((st.index)/st.steps.length*100)+"%";
+ document.getElementById("phaseContent").innerHTML=`<div class="phaseBox"><div class="sub">${st.type==="warmup"?"PREPARATI ALL'ALLENAMENTO":"RECUPERA GRADUALMENTE"}</div><div class="phaseTitle">${step.name}</div><div class="phaseTimer" id="phaseTimer">${formatClock(step.sec)}</div><p class="note">${step.tip}</p><div class="phaseProgress"><i id="phaseStepBar" style="width:0%"></i></div><button class="primary bigAction" style="margin-top:12px" onclick="startPhaseTimer()">INIZIA ▶</button><button style="width:100%;margin-top:8px" onclick="nextPhaseStep()">SALTA ›</button></div>`;
+ st.left=step.sec;
+ clearInterval(phaseTicker);
+}
+function startPhaseTimer(){
+ const st=phaseState;if(!st)return;
+ const total=st.steps[st.index].sec;
+ clearInterval(phaseTicker);
+ phaseTicker=setInterval(()=>{
+   st.left--;
+   const t=document.getElementById("phaseTimer");if(t)t.textContent=formatClock(Math.max(0,st.left));
+   const b=document.getElementById("phaseStepBar");if(b)b.style.width=Math.min(100,(total-st.left)/total*100)+"%";
+   if(st.left<=0){clearInterval(phaseTicker);navigator.vibrate?.([120,60,120]);nextPhaseStep()}
+ },1000);
+}
+function nextPhaseStep(){
+ clearInterval(phaseTicker);
+ const st=phaseState;if(!st)return;
+ st.index++;
+ if(st.index>=st.steps.length){
+   if(st.type==="warmup"){beginWorkoutSession(st.day)}
+   else{finishCooldown()}
+   return;
+ }
+ renderPhase();
+}
+function cancelPhase(){
+ clearInterval(phaseTicker);phaseState=null;show("home");renderHome();
+}
+function beginWorkoutSession(day){
+ phaseState=null;
+ currentDay=day;
+ sessionWorkout=sessionWorkout||adaptiveWorkout(plans[profile][currentDay]);
  exIndex=0;setDone=0;repsLog=[];sessionStarted=Date.now();activeSeconds=0;
  clearInterval(sessionTicker);
  sessionTicker=setInterval(()=>{activeSeconds++;sessionElapsed.textContent=new Date(activeSeconds*1000).toISOString().slice(14,19);if(activeSeconds%10===0)saveLiveDraft()},1000);
- show("session");renderExercise()
+ show("session");renderExercise();
+}
+function launchCooldown(){
+ if(localStorage.getItem("ftGuidedPhases")==="0"){finalizeWorkoutSession();return}
+ phaseState={type:"cooldown",day:currentDay,steps:cooldownPlan(sessionWorkout||plans[profile][currentDay]),index:0,left:0};
+ show("phaseGuide");renderPhase();
+}
+function finishCooldown(){
+ phaseState=null;
+ finalizeWorkoutSession();
+}
+
+function start(day){
+ launchWarmup(day);
 }
 function mediaBlock(type,name){return `<div class="video"><span class="badge">▶️ TUTORIAL VIDEO</span><video src="${media[type]}" autoplay muted loop playsinline controls preload="metadata"></video></div>`}
 
@@ -1556,6 +1666,12 @@ function kcalEstimate(sec){let kg=profile==="dad"?72:53;let met=5.5;return Math.
 function finishSession(){
  clearInterval(sessionTicker);
  clearInterval(timerInt);
+ launchCooldown();
+}
+
+function finalizeWorkoutSession(){
+ clearInterval(sessionTicker);
+ clearInterval(timerInt);
  const sec=Math.max(60,activeSeconds);
  const d=db();
  d.sessions.push({profile:profile,day:currentDay,ts:Date.now(),durationSec:sec,kcal:kcalEstimate(sec),logs:repsLog,completed:true});
@@ -1668,11 +1784,17 @@ function renderNutrition(){
       <div class="suppBox"><h3>Pre-workout</h3><p class="note">Non necessario. Evita di affidarti a stimolanti per compensare sonno o recupero insufficienti.</p></div>`;
  }
 }
-function show(id){["home","session","together","nutrition","progressPage","safety"].forEach(x=>document.getElementById(x).classList.toggle("hidden",x!==id));if(id==="progressPage"){progressTab="overview";renderProgress();if(id==="nutrition"){nutriTab="today";renderNutrition();}}if(id==="home")renderHome()}
+function show(id){["home","phaseGuide","session","together","nutrition","progressPage","safety"].forEach(x=>document.getElementById(x).classList.toggle("hidden",x!==id));if(id==="progressPage"){progressTab="overview";renderProgress();if(id==="nutrition"){nutriTab="today";renderNutrition();}}if(id==="home")renderHome()}
 function renderHistory(){let ss=profileSessions().slice().reverse();history.innerHTML=ss.length?ss.map(s=>`<div class="card pad"><b>Allenamento ${s.day}</b><div class="sub">${new Date(s.ts).toLocaleString("it-IT")}</div><div class="chips"><span class="chip">⏱ ${fmtTime(s.durationSec)}</span><span class="chip">🔥 ${s.kcal} kcal stimate</span></div></div>`).join(""):'<p class="note">Ancora nessun allenamento registrato.</p>'}
 function openStats(){
  const bh=backupHealth();let s=stats();sheet.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center"><h2>Statistiche live</h2><button onclick="modal.classList.add('hidden')">✕</button></div><div class="statline"><div class="stat"><b>${s.sessions}</b><small>Allenamenti</small></div><div class="stat"><b>${fmtTime(s.totalSec)}</b><small>Tempo totale</small></div><div class="stat"><b>${s.kcal}</b><small>kcal stimate</small></div><div class="stat"><b>${s.streak}</b><small>Streak</small></div></div><div class="card pad"><b>Settimana</b><p>${s.weekDone}/3 allenamenti completati</p></div>`;sheet.innerHTML+=`<div class="card pad"><b>💾 Protezione dati</b><p class="note">${bh.sessions} sessioni · ${bh.keys} gruppi dati locali. Ultimo backup: ${localStorage.getItem("ftLastBackup")?new Date(localStorage.getItem("ftLastBackup")).toLocaleString("it-IT"):"mai"}.</p></div>`;
  modal.classList.remove("hidden")}
+
+function toggleGuidedPhases(){
+ const off=localStorage.getItem("ftGuidedPhases")==="0";
+ localStorage.setItem("ftGuidedPhases",off?"1":"0");
+ openSettings();
+}
 function openSettings(){
  const cacheState=localStorage.getItem("ftOfflineReady")==="1";
  const lastBackup=localStorage.getItem("ftLastBackup")||"";
@@ -1686,6 +1808,7 @@ function openSettings(){
   </div>
  </div>
 
+ <div class="card pad"><div class="row" style="display:flex;justify-content:space-between;align-items:center"><div><b>🔥 Riscaldamento & Defaticamento</b><div class="sub">Guide automatiche prima e dopo ogni seduta.</div></div><button onclick="toggleGuidedPhases()" id="guidedPhaseBtn">${localStorage.getItem("ftGuidedPhases")==="0"?"OFF":"ON"}</button></div></div>
  <div class="backupBox">
   <h3>💾 Backup & Ripristino</h3>
   <p class="note">Esporta tutti i dati personali di FIT TOGETHER in un unico file. Potrai importarli su un altro iPhone o ripristinarli dopo aver cancellato i dati del browser.</p>
@@ -1703,7 +1826,7 @@ function openSettings(){
  <div class="card pad">
   <button style="width:100%" onclick="if(confirm('Azzero tutti i dati salvati?')){clearAllFitData();modal.classList.add('hidden');renderHome()}">Azzera tutti i dati</button>
  </div>
- <div class="card pad"><p class="note">I dati vengono salvati localmente su questo dispositivo/browser.</p><p class="note"><b>Versione: V19 Record & Traguardi</b></p></div>`;
+ <div class="card pad"><p class="note">I dati vengono salvati localmente su questo dispositivo/browser.</p><p class="note"><b>Versione: V20 Warm-up & Cool-down</b></p></div>`;
  modal.classList.remove("hidden")
 }
 
