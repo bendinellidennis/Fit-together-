@@ -1,132 +1,205 @@
 <!doctype html>
 <html lang="it">
 <head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#090d14"><title>Fit Together</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#070b12">
+<title>Fit Together</title>
 <style>
-:root{--bg:#090d14;--card:#151b24;--line:#283243;--txt:#f6f8fb;--muted:#9ba8ba;--purple:#7b5cff;--green:#27d17b}
-*{box-sizing:border-box} body{margin:0;background:linear-gradient(#090d14,#0d1420);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
-main{max-width:760px;margin:auto;padding:18px 15px 110px}.brand{font-weight:900;font-size:28px}.sub{color:var(--muted);font-size:13px}
-.card{background:linear-gradient(145deg,#141a23,#18202b);border:1px solid var(--line);border-radius:22px;padding:16px;margin:12px 0;box-shadow:0 14px 34px #0005}
-.row{display:flex;align-items:center;justify-content:space-between;gap:10px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-button{border:0;border-radius:15px;padding:13px 14px;background:#252d39;color:#fff;font-weight:800;font-size:15px}
-button.primary{background:linear-gradient(135deg,#6255ff,#9b43ff)}button.green{background:#15552f;color:#c0ffd7}
-button.active{outline:2px solid var(--purple)}.pill{display:inline-block;background:#25303e;border-radius:999px;padding:6px 9px;font-size:12px;color:#dbe4ef;margin:2px}
-.hidden{display:none!important}.progress{height:8px;background:#222b37;border-radius:99px;overflow:hidden}.progress i{display:block;height:100%;background:var(--green);width:0}
-.video{width:100%;aspect-ratio:16/9;background:#05080d;border-radius:18px;overflow:hidden;margin:12px 0;border:1px solid #303b4c;box-shadow:0 16px 34px #0008}
-.video video,.video img{display:block;width:100%;height:100%;object-fit:cover}.videoBadge{position:absolute;margin:13px;background:#000b;padding:7px 10px;border-radius:99px;font-size:12px;z-index:2}
-.title{font-size:21px;font-weight:900}.note{color:var(--muted);font-size:13px;line-height:1.45}.timer{font-size:52px;font-weight:900;text-align:center;font-variant-numeric:tabular-nums}
-.warn{border-left:4px solid #f4bb52}.ok{border-left:4px solid var(--green)}
-nav{position:fixed;bottom:0;left:0;right:0;background:#101620ef;border-top:1px solid var(--line);padding:8px 8px calc(8px + env(safe-area-inset-bottom));backdrop-filter:blur(14px)}nav .wrap{max-width:760px;margin:auto;display:grid;grid-template-columns:repeat(4,1fr);gap:5px}nav button{background:none;font-size:11px;padding:8px 2px;color:#aeb9c8}
-.credit{font-size:11px;color:#788698;line-height:1.45}
+:root{
+ --bg:#070b12;--panel:#0e1622;--panel2:#121d2c;--line:#223249;--txt:#f8fbff;--muted:#9ca9bb;
+ --purple:#8c52ff;--purple2:#bc5cff;--green:#32d17c;--red:#ff635f;--amber:#ffc85e;--blue:#3aa0ff;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:radial-gradient(circle at 60% -15%,#13152c 0,#070b12 45%,#05080d 100%);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+body{min-height:100vh}
+main{max-width:820px;margin:auto;padding:18px 16px 115px}
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.brand{font-size:31px;font-weight:950;letter-spacing:-1px}.brand b{color:var(--purple)}
+.sub{color:var(--muted);font-size:13px}.icons{display:flex;gap:8px;align-items:center}.mini{background:#0e1724;border:1px solid #26364c;border-radius:15px;padding:9px 11px;font-size:13px;font-weight:800}
+button{border:0;border-radius:14px;padding:12px 14px;color:white;background:#202b3a;font-weight:850;font-size:15px}
+button:active{transform:scale(.98)}
+.primary{background:linear-gradient(135deg,#7c4dff,#9e3cff);box-shadow:0 8px 22px #7d4dff35}
+.outline{background:transparent;border:1px solid #7047c5;color:#d6c4ff}
+.green{background:#174d2d;color:#c8ffdb}
+.card{background:linear-gradient(145deg,#0d1622,#111c2a);border:1px solid var(--line);border-radius:22px;box-shadow:0 18px 45px #0006;margin:12px 0;overflow:hidden}
+.pad{padding:16px}
+.hero{padding:18px}.welcome{font-size:26px;font-weight:900;margin:6px 0}.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.profile{position:relative;border:1px solid #27364a;border-radius:20px;overflow:hidden;min-height:165px;background:#111b29;padding:0;cursor:pointer}
+.profile.active{outline:2px solid var(--purple);box-shadow:0 0 26px #8d52ff35}
+.profile img{width:100%;height:115px;object-fit:cover;object-position:center 15%;display:block;filter:saturate(.95) contrast(1.04)}
+.profile .info{padding:10px 12px}.profile .name{font-size:19px;font-weight:950}.profile .goal{font-size:12px;color:#a8b4c5}
+.metrics{display:grid;grid-template-columns:1fr 1fr;gap:12px}.ringWrap{display:flex;align-items:center;gap:16px}.ring{width:118px;height:118px;border-radius:50%;display:grid;place-items:center;background:conic-gradient(var(--purple) var(--pct,0%),#1b2736 0);position:relative}.ring:after{content:"";position:absolute;inset:12px;border-radius:50%;background:#0e1723}.ringText{position:relative;z-index:2;text-align:center;font-weight:950;font-size:28px}.ringText small{display:block;color:#aab5c4;font-size:11px;font-weight:700}
+.statline{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0}.stat{background:#101b29;border:1px solid #223249;border-radius:15px;padding:10px}.stat b{display:block;font-size:19px}.stat small{color:#9ba8ba}
+.week{display:flex;align-items:center;gap:12px}.weekbar{height:9px;background:#182432;border-radius:999px;overflow:hidden;flex:1}.weekbar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--purple),var(--purple2))}
+.workout{display:grid;grid-template-columns:44% 56%;min-height:205px}.workout img{width:100%;height:100%;object-fit:cover;display:block}.workout .body{padding:16px;display:flex;flex-direction:column;justify-content:space-between}.wtitle{font-size:24px;font-weight:950}.chips{margin:7px 0}.chip{display:inline-block;background:#172536;border-radius:999px;padding:6px 9px;margin:2px;font-size:12px;color:#d6e2f0}.desc{color:#a8b4c3;font-size:13px;line-height:1.4}
+.hidden{display:none!important}
+.video{width:100%;aspect-ratio:16/9;background:#05080d;border-radius:18px;overflow:hidden;border:1px solid #2b3b52;margin:12px 0;position:relative}.video video{width:100%;height:100%;object-fit:cover;display:block}.video .badge{position:absolute;z-index:2;left:10px;top:10px;background:#000a;border-radius:999px;padding:6px 9px;font-size:11px}
+.exerciseHeader{font-size:28px;font-weight:950}.exerciseMeta{display:flex;gap:6px;flex-wrap:wrap}.note{color:#a0adbd;line-height:1.45;font-size:13px}
+.progress{height:9px;background:#1a2634;border-radius:999px;overflow:hidden}.progress i{display:block;height:100%;background:var(--green);width:0}.timer{font-size:54px;font-weight:950;text-align:center;font-variant-numeric:tabular-nums}
+.recordBox{display:grid;grid-template-columns:1fr 1fr;gap:10px}.input{background:#0b141f;border:1px solid #2b3c53;color:#fff;border-radius:12px;padding:11px;width:100%;font-size:16px}
+.live{border-left:4px solid var(--green)}.warn{border-left:4px solid var(--amber)}
+nav{position:fixed;left:0;right:0;bottom:0;background:#0b111aef;border-top:1px solid #223249;backdrop-filter:blur(16px);padding:8px 8px calc(8px + env(safe-area-inset-bottom));z-index:50}
+nav .wrap{max-width:820px;margin:auto;display:grid;grid-template-columns:repeat(4,1fr);gap:5px}nav button{background:none;color:#aab5c4;font-size:11px;padding:8px 2px}
+.modal{position:fixed;inset:0;background:#000a;display:grid;place-items:end center;z-index:99}.sheet{width:min(820px,100%);max-height:82vh;overflow:auto;background:#0d1622;border:1px solid #2a3a51;border-radius:24px 24px 0 0;padding:18px}
+@media(max-width:640px){.metrics{grid-template-columns:1fr}.workout{grid-template-columns:42% 58%}.wtitle{font-size:21px}.brand{font-size:27px}.profile img{height:105px}}
 </style></head>
-<body><main>
-<div class="brand">FIT TOGETHER 💪</div><div class="sub">Casa • Mare • Tutorial video reali</div>
+<body>
+<main>
+<div class="topbar">
+  <div><div class="brand">FIT <b>TOGETHER</b> 💪</div><div class="sub">🏠 Casa • 🌊 Mare • 3 volte a settimana</div></div>
+  <div class="icons">
+    <button class="mini" onclick="openStats()">🔥 <span id="topStreak">0</span></button>
+    <button class="mini" onclick="openStats()">📅 <span id="topSessions">0</span></button>
+    <button class="mini" onclick="openSettings()">⚙️</button>
+  </div>
+</div>
 
 <section id="home">
-<div class="card"><h2>Chi si allena?</h2><div class="grid">
-<button id="dad" class="active" onclick="setP('dad')">👨 TU<br><span class="sub">forza • tono • massa</span></button>
-<button id="girl" onclick="setP('girl')">👧 FIGLIA<br><span class="sub">forza • tecnica • atletismo</span></button>
-</div></div>
-<div class="card"><div class="row"><b>Questa settimana</b><b id="week">0/3</b></div><div class="progress"><i id="wbar"></i></div></div>
-<div id="cards"></div>
+<div class="card hero">
+  <div class="welcome" id="welcome">Bentornato! 👋</div>
+  <div class="sub">Sei pronto a superare i tuoi limiti oggi?</div>
+  <div class="grid2" style="margin-top:14px">
+    <button class="profile active" id="dadBtn" onclick="selectProfile('dad')">
+      <img src="assets/profile_dad.jpg"><div class="info"><div class="name">TU</div><div class="goal">forza • tono • massa</div></div>
+    </button>
+    <button class="profile" id="girlBtn" onclick="selectProfile('girl')">
+      <img src="assets/profile_girl.jpg"><div class="info"><div class="name">FIGLIA</div><div class="goal">forza • tecnica • atletismo</div></div>
+    </button>
+  </div>
+</div>
+
+<div class="card pad">
+  <div class="ringWrap">
+    <div class="ring" id="ring"><div class="ringText"><span id="pct">0%</span><small>Completato</small></div></div>
+    <div style="flex:1">
+      <div class="statline">
+        <div class="stat"><b id="sSessions">0</b><small>Allenamenti</small></div>
+        <div class="stat"><b id="sTime">0m</b><small>Tempo totale</small></div>
+        <div class="stat"><b id="sCalories">0</b><small>kcal stimate</small></div>
+        <div class="stat"><b id="sStreak">0</b><small>Streak giorni</small></div>
+      </div>
+      <button class="outline" style="width:100%" onclick="openStats()">VEDI STATISTICHE ›</button>
+    </div>
+  </div>
+</div>
+
+<div class="card pad week"><b>📅 Questa settimana</b><div class="weekbar"><i id="weekBar"></i></div><b id="weekText">0/3</b></div>
+
+<div id="workouts"></div>
 </section>
 
 <section id="session" class="hidden">
-<button onclick="show('home')">← Allenamenti</button>
-<div class="card"><div class="row"><div><div class="title" id="wtitle"></div><div class="sub" id="wplace"></div></div><span class="pill" id="count"></span></div></div>
-<div id="exercise"></div>
+  <div class="row" style="display:flex;justify-content:space-between;align-items:center">
+    <button onclick="exitSession()">← Home</button><span class="chip" id="sessionElapsed">00:00</span>
+  </div>
+  <div class="card pad"><div id="sessionTitle" class="wtitle"></div><div class="sub" id="sessionPlace"></div></div>
+  <div id="exerciseView"></div>
 </section>
 
 <section id="nutrition" class="hidden">
-<div class="card"><h2>🥗 Nutrizione & recupero</h2><p>Prima vengono alimentazione completa, acqua e sonno.</p></div>
-<div class="card ok"><h3>Per te</h3><p><b>Proteine:</b> shake solo se utile per comodità. <b>Creatina monoidrato:</b> molto studiata negli adulti, ma non indispensabile. Se hai patologie o farmaci, verifica prima con medico/farmacista.</p><p><b>BCAA:</b> generalmente poco utili se assumi già proteine complete a sufficienza.</p></div>
-<div class="card warn"><h3>Per tua figlia, 16 anni</h3><p>Base alimentare: latte/yogurt, uova, pesce, carne, legumi, cereali, frutta, verdura e frutta secca se tollerata. L'app non prescrive automaticamente creatina, BCAA o pre-workout a una minorenne; eventuali supplementi vanno concordati con pediatra o dietista sportivo.</p></div>
+<div class="card pad"><h2>🥗 Nutrizione & recupero</h2><p class="note">La base resta alimentazione completa, acqua e sonno. Gli integratori sono opzionali.</p></div>
+<div class="card pad live"><h3>Per te</h3><p><b>Proteine:</b> shake solo per comodità se serve. <b>Creatina monoidrato:</b> molto studiata negli adulti per forza e sforzi intensi ripetuti; non è obbligatoria. Con patologie o farmaci, verifica prima con medico/farmacista.</p><p><b>BCAA:</b> normalmente aggiungono poco se le proteine totali sono già adeguate.</p></div>
+<div class="card pad warn"><h3>Per tua figlia, 16 anni</h3><p>Essere sportiva consente un programma serio, ma l'app non prescrive automaticamente creatina, BCAA o pre-workout a una minorenne. Priorità a pasti completi e, se serve un supplemento specifico, valutazione con pediatra/dietista sportivo.</p></div>
 </section>
 
-<section id="history" class="hidden"><div class="card"><h2>📈 Progressi</h2><div id="hist"></div><button onclick="resetHist()">Azzera storico</button></div></section>
-<section id="safe" class="hidden"><div class="card"><h2>🛡️ Sicurezza</h2><p>5–8 minuti di riscaldamento. Tecnica prima della difficoltà. Stop in caso di dolore acuto, capogiro o malessere.</p><p>Profilo adolescente: niente massimali, gare di carico o cedimento forzato.</p></div>
-<div class="card"><h3>Crediti tutorial</h3><p class="credit">Clip dimostrative da Wikimedia Commons, tra cui FitnessScape (CC BY 3.0), Forward lunge training di Skhulile Mthiyane (CC BY-SA 4.0) e contenuti U.S. Government/Commons secondo le rispettive licenze.</p></div></section>
+<section id="progressPage" class="hidden">
+<div class="card pad"><h2>📈 Progressi</h2><div id="history"></div></div>
+</section>
+
+<section id="safety" class="hidden">
+<div class="card pad"><h2>🛡️ Sicurezza</h2><p>5–8 minuti di riscaldamento. Tecnica prima della difficoltà. Stop in caso di dolore acuto, capogiro o malessere.</p><p>Profilo adolescente: niente massimali, gare di carico o cedimento forzato.</p></div>
+</section>
 </main>
 
-<nav><div class="wrap"><button onclick="show('home')">🏠<br>Workout</button><button onclick="show('nutrition')">🥗<br>Nutrizione</button><button onclick="show('history')">📈<br>Progressi</button><button onclick="show('safe')">🛡️<br>Sicurezza</button></div></nav>
+<nav><div class="wrap"><button onclick="show('home')">🏋️<br>Workout</button><button onclick="show('nutrition')">🥗<br>Nutrizione</button><button onclick="show('progressPage')">📈<br>Progressi</button><button onclick="show('safety')">🛡️<br>Sicurezza</button></div></nav>
+
+<div id="modal" class="modal hidden" onclick="closeModal(event)"><div class="sheet" onclick="event.stopPropagation()" id="sheet"></div></div>
 
 <script>
-const media={"push": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Conditioning_Drill-_Eight_Count_T_Push-Up.webm", "squat": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Squat_-_exercise_demonstration_video.webm", "lunge": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Forward_lunge_training.webm", "row": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Bent-over_row_-_exercise_demonstration_video.webm", "deadlift": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Deadlift_-_exercise_demonstration_video.webm", "plank": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Naval_Station_Rota_Navy_250_Plank_Challenge_(986473).webm", "calf": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Standing-calf-raises-1.gif"};
-let profile='dad',day='A',idx=0,setDone=0,timerInt=null;
-
+const media={"push": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Conditioning_Drill-_Eight_Count_T_Push-Up.webm", "squat": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Squat_-_exercise_demonstration_video.webm", "lunge": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Forward_lunge_training.webm", "row": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Bent-over_row_-_exercise_demonstration_video.webm", "plank": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Naval_Station_Rota_Navy_250_Plank_Challenge_(986473).webm"};
 const plans={
 dad:{
-A:{name:"A • Spinta + Core",place:"Casa",ex:[
-["Push-up",4,"8–15",90,"Petto • spalle • tricipiti","push","Corpo in linea, scendi controllato e risali.","Gomiti non troppo aperti; niente schiena inarcata."],
-["Squat",4,"12–18",75,"Gambe • glutei","squat","Piedi stabili, ginocchia seguono le punte, scendi in controllo.","Non far collassare le ginocchia verso l'interno."],
-["Affondi",3,"10/lato",75,"Gambe • glutei","lunge","Passo lungo e controllato, busto alto.","Non perdere l'allineamento del ginocchio."],
-["Plank",3,"35–60 sec",60,"Core","plank","Corpo in linea, addome e glutei attivi.","Non lasciare cadere il bacino."]
-]},
-B:{name:"B • Gambe + Schiena",place:"Casa / mare",ex:[
-["Squat tempo",4,"10–15",75,"Gambe • glutei","squat","Scendi in circa 3 secondi, breve pausa, risali.","Niente rimbalzo in basso."],
-["Affondi camminati",3,"10/lato",75,"Gambe • glutei","lunge","Passi controllati, busto stabile.","Non accelerare a scapito della tecnica."],
-["Rematore con zaino",4,"10–15",90,"Schiena • bicipiti","row","Busto inclinato, schiena neutra, tira il carico verso il fianco.","Non arrotondare la schiena né usare slancio."],
-["Calf raise",4,"15–25",45,"Polpacci","calf","Sali lentamente sulle punte e torna giù completo.","Non rimbalzare."]
-]},
-C:{name:"C • Total Body Mare",place:"Mare",ex:[
-["Push-up",4,"8–15",75,"Petto • tricipiti","push","Corpo in linea e movimento controllato.","Non accorciare la discesa."],
-["Squat",4,"12–20",75,"Gambe • glutei","squat","Controlla discesa e risalita.","Non perdere l'appoggio dei piedi."],
-["Affondi",3,"10/lato",75,"Gambe • glutei","lunge","Passo stabile sulla sabbia compatta.","Evita sabbia troppo cedevole se senti caviglie affaticate."],
-["Rematore con zaino",4,"10–15",90,"Schiena • braccia","row","Tira verso il fianco con scapole attive.","Non usare slancio."],
-["Plank",3,"40–60 sec",60,"Core","plank","Mantieni la linea del corpo.","Stop quando perdi la posizione."]
-]}
+A:{name:"A • Spinta + Core",place:"Casa",img:"assets/workout_a.jpg",mins:45,desc:"Petto, spalle, tricipiti e addome. Forza e definizione della parte alta.",ex:[
+["Push-up",4,"8–15",90,"Petto • spalle • tricipiti","push","Corpo in linea, scendi controllato finché il petto si avvicina al suolo e risali.","Gomiti non troppo aperti; schiena non inarcata."],
+["Pike push-up",3,"6–12",90,"Spalle • tricipiti","push","Bacino alto, testa verso il pavimento tra le mani, spingi in controllo.","Non collassare sulle spalle."],
+["Push-up stretti",3,"6–12",75,"Tricipiti • petto","push","Gomiti vicino al busto, corpo rigido.","Non accorciare il movimento."],
+["Plank",3,"35–60 sec",60,"Core","plank","Addome e glutei attivi, corpo in linea.","Non lasciare cadere il bacino."],
+["Dead bug",3,"8–12/lato",45,"Core","plank","Schiena bassa stabile, movimento lento.","Non perdere il controllo lombare."]]},
+B:{name:"B • Gambe + Glutei",place:"Casa / mare",img:"assets/workout_b.jpg",mins:50,desc:"Gambe forti, glutei, stabilità e controllo.",ex:[
+["Squat",4,"12–20",75,"Gambe • glutei","squat","Piedi stabili, ginocchia seguono le punte, discesa controllata.","Ginocchia verso l'interno o talloni sollevati."],
+["Bulgarian split squat",3,"8–12/lato",90,"Quadricipiti • glutei","lunge","Piede posteriore su supporto stabile e basso; scendi verticalmente.","Supporto instabile."],
+["Affondi indietro",3,"10–14/lato",75,"Gambe • glutei","lunge","Passo indietro, busto alto, ritorna spingendo col piede davanti.","Passo troppo corto."],
+["Hip bridge",4,"12–20",60,"Glutei","squat","Solleva il bacino contraendo i glutei.","Non iperestendere la zona lombare."],
+["Calf raise",4,"15–25",45,"Polpacci","squat","Sali lentamente sulle punte e torna giù completo.","Non rimbalzare."]]},
+C:{name:"C • Total Body Mare",place:"Mare",img:"assets/workout_c.jpg",mins:55,desc:"Allenamento completo per tutto il corpo, resistenza e tonicità.",ex:[
+["Push-up",4,"8–15",75,"Petto • tricipiti","push","Movimento controllato e corpo in linea.","Non perdere l'assetto."],
+["Squat tempo",4,"12–16",75,"Gambe","squat","Scendi in 3 secondi, breve pausa, risali.","Non accelerare la discesa."],
+["Affondi camminati",3,"10/lato",75,"Gambe • glutei","lunge","Passi controllati, busto alto.","Non cercare velocità."],
+["Rematore con zaino",4,"10–15",90,"Schiena • braccia","row","Busto inclinato, schiena neutra, tira verso il fianco.","Niente slancio."],
+["Plank",3,"40–60 sec",60,"Core","plank","Mantieni la linea del corpo.","Stop quando perdi la tecnica."]]}
 },
 girl:{
-A:{name:"A • Total Body",place:"Casa",ex:[
-["Push-up inclinato o completo",3,"8–12",60,"Petto • braccia","push","Scegli la variante che consente tecnica pulita.","Non arrivare a cedimento forzato."],
+A:{name:"A • Total Body",place:"Casa",img:"assets/workout_a.jpg",mins:40,desc:"Forza generale, postura e controllo del corpo.",ex:[
+["Push-up inclinato o completo",3,"8–12",60,"Petto • braccia","push","Scegli la variante che mantiene tecnica pulita.","Niente cedimento forzato."],
 ["Squat",3,"10–15",60,"Gambe • glutei","squat","Scendi controllata, ginocchia allineate.","Non forzare profondità se perdi la forma."],
 ["Affondi",3,"8–10/lato",60,"Gambe • equilibrio","lunge","Passo controllato, busto alto.","Usa supporto stabile se serve."],
-["Plank",3,"20–40 sec",45,"Core","plank","Mantieni una posizione pulita.","Stop quando la tecnica peggiora."]
-]},
-B:{name:"B • Gambe + Schiena",place:"Casa / mare",ex:[
+["Plank",3,"20–40 sec",45,"Core","plank","Mantieni una posizione pulita.","Stop quando la tecnica peggiora."]]},
+B:{name:"B • Gambe + Stabilità",place:"Casa / mare",img:"assets/workout_b.jpg",mins:42,desc:"Gambe, glutei, equilibrio e coordinazione.",ex:[
 ["Squat pausa",3,"10–12",60,"Gambe","squat","Pausa breve in basso e risali controllata.","Nessun rimbalzo."],
 ["Affondi camminati",3,"8/lato",60,"Gambe • glutei","lunge","Passi controllati.","Non cercare velocità."],
-["Rematore con zaino leggero",3,"10–12",60,"Schiena • braccia","row","Zaino leggero, schiena neutra, tira verso il fianco.","Niente slancio."],
-["Calf raise",3,"12–20",45,"Polpacci","calf","Salita e discesa lente.","Non rimbalzare."]
-]},
-C:{name:"C • Mare Movimento",place:"Mare",ex:[
+["Rematore con zaino leggero",3,"10–12",60,"Schiena • braccia","row","Zaino leggero, schiena neutra.","Niente slancio."],
+["Calf raise",3,"12–20",45,"Polpacci","squat","Salita e discesa lente.","Non rimbalzare."]]},
+C:{name:"C • Mare Movimento",place:"Mare",img:"assets/workout_c.jpg",mins:45,desc:"Total body dinamico sulla sabbia compatta.",ex:[
 ["Push-up inclinato o completo",3,"8–12",60,"Petto • braccia","push","Variante che mantiene tecnica buona.","Niente cedimento forzato."],
 ["Squat",3,"12–15",60,"Gambe","squat","Movimento fluido e controllato.","Non accelerare."],
 ["Affondi",3,"8/lato",60,"Gambe • equilibrio","lunge","Passi stabili sulla sabbia compatta.","Evita superfici irregolari."],
-["Plank",3,"20–40 sec",45,"Core","plank","Corpo in linea.","Stop quando perdi la posizione."]
-]}
-}
-};
+["Plank",3,"20–40 sec",45,"Core","plank","Corpo in linea.","Stop quando perdi la posizione."]]}
+}};
+let profile=localStorage.getItem("ftProfile")||"dad", currentDay="A", exIndex=0, setDone=0, timerInt=null, sessionStarted=null, sessionTicker=null, repsLog=[], activeSeconds=0;
 
-function setP(p){profile=p;dad.classList.toggle('active',p==='dad');girl.classList.toggle('active',p==='girl');renderHome()}
+function db(){return JSON.parse(localStorage.getItem("ftData")||'{"sessions":[]}')}
+function saveDB(d){localStorage.setItem("ftData",JSON.stringify(d))}
+function selectProfile(p){profile=p;localStorage.setItem("ftProfile",p);dadBtn.classList.toggle("active",p==="dad");girlBtn.classList.toggle("active",p==="girl");renderHome()}
+function profileSessions(){return db().sessions.filter(s=>s.profile===profile)}
+function dayKey(ts){let d=new Date(ts);return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
+function stats(){
+ let ss=profileSessions(), totalSec=ss.reduce((a,s)=>a+(s.durationSec||0),0), kcal=ss.reduce((a,s)=>a+(s.kcal||0),0);
+ let unique=[...new Set(ss.map(s=>dayKey(s.ts)))].sort().reverse(), streak=0;
+ if(unique.length){let cur=new Date();cur.setHours(0,0,0,0);let first=new Date(unique[0]); if((cur-first)/86400000<=1){streak=1;for(let i=1;i<unique.length;i++){let a=new Date(unique[i-1]),b=new Date(unique[i]);if((a-b)/86400000===1)streak++;else break;}}}
+ let now=new Date(), monday=new Date(now);monday.setHours(0,0,0,0);let wd=(monday.getDay()+6)%7;monday.setDate(monday.getDate()-wd);
+ let weekDone=new Set(ss.filter(s=>s.ts>=monday.getTime()).map(s=>s.day)).size;
+ return {sessions:ss.length,totalSec,kcal:Math.round(kcal),streak,weekDone,pct:Math.min(100,Math.round(weekDone/3*100))}
+}
+function fmtTime(sec){if(sec<3600)return Math.round(sec/60)+"m";return Math.floor(sec/3600)+"h "+Math.round((sec%3600)/60)+"m"}
 function renderHome(){
-let h=JSON.parse(localStorage.getItem('fithistV')||'[]'),done=new Set(h.filter(x=>x.p===profile&&Date.now()-x.t<604800000).map(x=>x.d)).size;
-week.textContent=done+"/3";wbar.style.width=(done/3*100)+"%";
-cards.innerHTML=Object.entries(plans[profile]).map(([k,v])=>`<div class="card"><div class="row"><div><div class="title">${v.name}</div><span class="pill">${v.place}</span><span class="pill">${v.ex.length} esercizi</span></div><button class="primary" onclick="start('${k}')">INIZIA</button></div></div>`).join('')
+ dadBtn.classList.toggle("active",profile==="dad");girlBtn.classList.toggle("active",profile==="girl");
+ welcome.textContent=profile==="dad"?"Bentornato! 👋":"Pronta ad allenarti? 👋";
+ let s=stats();topStreak.textContent=s.streak;topSessions.textContent=s.sessions;sSessions.textContent=s.sessions;sTime.textContent=fmtTime(s.totalSec);sCalories.textContent=s.kcal;sStreak.textContent=s.streak;pct.textContent=s.pct+"%";ring.style.setProperty("--pct",s.pct+"%");weekText.textContent=s.weekDone+"/3";weekBar.style.width=(s.weekDone/3*100)+"%";
+ workouts.innerHTML=Object.entries(plans[profile]).map(([k,w])=>`<div class="card workout"><img src="${w.img}"><div class="body"><div><div class="wtitle">${w.name}</div><div class="chips"><span class="chip">🏠 ${w.place}</span><span class="chip">⏱ ${w.mins} min</span></div><div class="desc">${w.desc}</div><div style="color:#c780ff;font-weight:800;margin-top:8px">${w.ex.length} esercizi</div></div><button class="primary" onclick="start('${k}')">INIZIA ALLENAMENTO ▶</button></div></div>`).join("");
 }
-function start(k){day=k;idx=0;setDone=0;show('session');renderEx()}
-function mediaBlock(type,name){
-let src=media[type];
-if(type==='calf') return `<div class="video" style="position:relative"><span class="videoBadge">▶️ TUTORIAL IN MOVIMENTO</span><img src="${src}" alt="${name}"></div>`;
-return `<div class="video" style="position:relative"><span class="videoBadge">▶️ TUTORIAL VIDEO</span><video src="${src}" autoplay muted loop playsinline controls preload="metadata"></video></div>`;
+function start(day){currentDay=day;exIndex=0;setDone=0;repsLog=[];sessionStarted=Date.now();activeSeconds=0;clearInterval(sessionTicker);sessionTicker=setInterval(()=>{activeSeconds++;sessionElapsed.textContent=new Date(activeSeconds*1000).toISOString().slice(14,19)},1000);show("session");renderExercise()}
+function mediaBlock(type,name){return `<div class="video"><span class="badge">▶️ TUTORIAL VIDEO</span><video src="${media[type]}" autoplay muted loop playsinline controls preload="metadata"></video></div>`}
+function renderExercise(){
+ clearInterval(timerInt);let w=plans[profile][currentDay],e=w.ex[exIndex];sessionTitle.textContent=w.name;sessionPlace.textContent=w.place;
+ exerciseView.innerHTML=`<div class="card pad"><div class="exerciseHeader">${e[0]}</div><div class="exerciseMeta"><span class="chip">${e[4]}</span><span class="chip">${e[1]} serie</span><span class="chip">${e[2]}</span><span class="chip">${exIndex+1}/${w.ex.length}</span></div>${mediaBlock(e[5],e[0])}<h3>Come farlo</h3><p>${e[6]}</p><h3>Errori da evitare</h3><p class="note">${e[7]}</p></div>
+ <div class="card pad"><div style="display:flex;justify-content:space-between"><b>Serie</b><b id="seriesText">0/${e[1]}</b></div><div class="progress"><i id="seriesBar"></i></div><div class="recordBox" style="margin-top:12px"><div><div class="sub">Ripetizioni fatte</div><input id="repsInput" class="input" inputmode="numeric" placeholder="es. 12"></div><div><div class="sub">Note/carico</div><input id="noteInput" class="input" placeholder="es. zaino 8kg"></div></div><button class="green" style="width:100%;margin-top:12px" onclick="completeSet()">✓ SERIE COMPLETATA</button></div>
+ <div class="card pad"><h3>Recupero</h3><div class="timer" id="timer">00:00</div><button style="width:100%" onclick="skipTimer()">Salta recupero</button></div>
+ <button class="primary" style="width:100%" onclick="nextExercise()">Prossimo esercizio →</button>`;
 }
-function renderEx(){
-clearInterval(timerInt);let w=plans[profile][day],e=w.ex[idx];wtitle.textContent=w.name;wplace.textContent=w.place;count.textContent=(idx+1)+"/"+w.ex.length;
-exercise.innerHTML=`<div class="card"><div class="title">${e[0]}</div><div><span class="pill">${e[4]}</span><span class="pill">${e[1]} serie</span><span class="pill">${e[2]}</span></div>
-${mediaBlock(e[5],e[0])}
-<h3>Come farlo</h3><p>${e[6]}</p><h3>Errori da evitare</h3><p class="note">${e[7]}</p></div>
-<div class="card"><div class="row"><b>Serie</b><b id="st">0/${e[1]}</b></div><div class="progress"><i id="sb"></i></div><button class="green" style="width:100%;margin-top:12px" onclick="doneSet()">✓ SERIE COMPLETATA</button></div>
-<div class="card"><h3>Recupero</h3><div class="timer" id="timer">00:00</div><button style="width:100%" onclick="skip()">Salta recupero</button></div>
-<button class="primary" style="width:100%" onclick="next()">Prossimo esercizio →</button>`;
-}
-function doneSet(){let e=plans[profile][day].ex[idx];if(setDone<e[1])setDone++;st.textContent=setDone+"/"+e[1];sb.style.width=(setDone/e[1]*100)+"%";startTimer(e[3])}
-function startTimer(s){clearInterval(timerInt);timer.textContent=fmt(s);timerInt=setInterval(()=>{s--;timer.textContent=fmt(Math.max(0,s));if(s<=0){clearInterval(timerInt);navigator.vibrate?.(200)}},1000)}
-function fmt(s){return String(Math.floor(s/60)).padStart(2,'0')+":"+String(s%60).padStart(2,'0')}
-function skip(){clearInterval(timerInt);timer.textContent="00:00"}
-function next(){let w=plans[profile][day];if(idx<w.ex.length-1){idx++;setDone=0;renderEx()}else{let h=JSON.parse(localStorage.getItem('fithistV')||'[]');h.push({p:profile,d:day,t:Date.now()});localStorage.setItem('fithistV',JSON.stringify(h));alert("Allenamento completato!");show('home');renderHome()}}
-function histRender(){let h=JSON.parse(localStorage.getItem('fithistV')||'[]').reverse();hist.innerHTML=h.length?h.map(x=>`<p>✓ ${x.p==='dad'?'Tu':'Figlia'} • Allenamento ${x.d} • ${new Date(x.t).toLocaleDateString('it-IT')}</p>`).join(''):'<p class="note">Ancora nessun allenamento.</p>'}
-function resetHist(){localStorage.removeItem('fithistV');histRender();renderHome()}
-function show(x){['home','session','nutrition','history','safe'].forEach(y=>document.getElementById(y).classList.toggle('hidden',x!==y));if(x==='history')histRender()}
+function completeSet(){let e=plans[profile][currentDay].ex[exIndex];if(setDone<e[1])setDone++;seriesText.textContent=setDone+"/"+e[1];seriesBar.style.width=(setDone/e[1]*100)+"%";repsLog.push({exercise:e[0],set:setDone,reps:repsInput.value||"",note:noteInput.value||""});repsInput.value="";noteInput.value="";startTimer(e[3])}
+function startTimer(s){clearInterval(timerInt);timer.textContent=formatClock(s);timerInt=setInterval(()=>{s--;timer.textContent=formatClock(Math.max(0,s));if(s<=0){clearInterval(timerInt);navigator.vibrate?.(200)}},1000)}
+function formatClock(s){return String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0")}
+function skipTimer(){clearInterval(timerInt);timer.textContent="00:00"}
+function nextExercise(){let w=plans[profile][currentDay];if(exIndex<w.ex.length-1){exIndex++;setDone=0;renderExercise()}else finishSession()}
+function kcalEstimate(sec){let kg=profile==="dad"?72:53;let met=5.5;return Math.round(met*3.5*kg/200*(sec/60))}
+function finishSession(){clearInterval(sessionTicker);clearInterval(timerInt);let sec=Math.max(60,activeSeconds),d=db();d.sessions.push({profile,day:currentDay,ts:Date.now(),durationSec:sec,kcal:kcalEstimate(sec),logs:repsLog});saveDB(d);alert("Allenamento salvato!");show("home");renderHome()}
+function exitSession(){if(sessionStarted && confirm("Vuoi uscire senza completare l'allenamento?")){clearInterval(sessionTicker);clearInterval(timerInt);sessionStarted=null;show("home")}}
+function show(id){["home","session","nutrition","progressPage","safety"].forEach(x=>document.getElementById(x).classList.toggle("hidden",x!==id));if(id==="progressPage")renderHistory();if(id==="home")renderHome()}
+function renderHistory(){let ss=profileSessions().slice().reverse();history.innerHTML=ss.length?ss.map(s=>`<div class="card pad"><b>Allenamento ${s.day}</b><div class="sub">${new Date(s.ts).toLocaleString("it-IT")}</div><div class="chips"><span class="chip">⏱ ${fmtTime(s.durationSec)}</span><span class="chip">🔥 ${s.kcal} kcal stimate</span></div></div>`).join(""):'<p class="note">Ancora nessun allenamento registrato.</p>'}
+function openStats(){let s=stats();sheet.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center"><h2>Statistiche live</h2><button onclick="modal.classList.add('hidden')">✕</button></div><div class="statline"><div class="stat"><b>${s.sessions}</b><small>Allenamenti</small></div><div class="stat"><b>${fmtTime(s.totalSec)}</b><small>Tempo totale</small></div><div class="stat"><b>${s.kcal}</b><small>kcal stimate</small></div><div class="stat"><b>${s.streak}</b><small>Streak</small></div></div><div class="card pad"><b>Settimana</b><p>${s.weekDone}/3 allenamenti completati</p></div>`;modal.classList.remove("hidden")}
+function openSettings(){sheet.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center"><h2>Impostazioni</h2><button onclick="modal.classList.add('hidden')">✕</button></div><div class="card pad"><button style="width:100%" onclick="if(confirm('Azzero tutti i dati salvati?')){localStorage.removeItem('ftData');modal.classList.add('hidden');renderHome()}">Azzera tutti i dati</button></div><div class="card pad"><p class="note">I dati vengono salvati localmente su questo dispositivo/browser.</p></div>`;modal.classList.remove("hidden")}
+function closeModal(e){if(e.target===modal)modal.classList.add("hidden")}
 renderHome();
-</script></body></html>
+</script>
+</body></html>
