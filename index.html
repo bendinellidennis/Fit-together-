@@ -201,6 +201,14 @@ main{max-width:720px;padding:14px 14px 108px}
  .offlineBadge{width:42px;height:42px;min-width:42px}
 }
 
+
+/* V15 BACKUP & RESTORE */
+.backupBox{background:linear-gradient(145deg,#101827,#18142b);border:1px solid #5d46a7;border-radius:16px;padding:13px;margin-top:10px}
+.backupGrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.backupGrid button{font-size:12px;padding:11px 8px}
+.backupStatus{background:#0c1520;border:1px solid #26374d;border-radius:13px;padding:10px;margin-top:10px;font-size:12px;line-height:1.45}
+.backupOk{color:#baffd0}.backupWarn{color:#ffd0a7}
+
 </style><link rel="manifest" href="manifest.webmanifest">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -546,6 +554,107 @@ if("serviceWorker" in navigator){
 }
 window.addEventListener("online",updateOfflineStatus);
 window.addEventListener("offline",updateOfflineStatus);
+
+
+const FT_BACKUP_VERSION=1;
+
+function fitStorageKeys(){
+ const keys=[];
+ for(let i=0;i<localStorage.length;i++){
+   const k=localStorage.key(i);
+   if(k && (
+      k==="ftData" ||
+      k==="ftProfile" ||
+      k==="ftAdaptive" ||
+      k==="ftTogetherDraft" ||
+      k==="ftOfflineReady" ||
+      k==="ftLastBackup" ||
+      k.startsWith("ftDraft_") ||
+      k.startsWith("ftBody_") ||
+      k.startsWith("ftNutrition_")
+   )) keys.push(k);
+ }
+ return [...new Set(keys)].sort();
+}
+
+function collectFitBackup(){
+ const storage={};
+ fitStorageKeys().forEach(k=>storage[k]=localStorage.getItem(k));
+ return {
+   app:"FIT TOGETHER",
+   backupVersion:FT_BACKUP_VERSION,
+   createdAt:new Date().toISOString(),
+   appVersion:"V15 Backup & Ripristino",
+   storage:storage
+ };
+}
+
+function exportFitBackup(){
+ try{
+   const backup=collectFitBackup();
+   const text=JSON.stringify(backup,null,2);
+   const blob=new Blob([text],{type:"application/json"});
+   const url=URL.createObjectURL(blob);
+   const a=document.createElement("a");
+   const stamp=new Date().toISOString().replace(/[:.]/g,"-");
+   a.href=url;
+   a.download=`FIT_TOGETHER_BACKUP_${stamp}.json`;
+   document.body.appendChild(a);
+   a.click();
+   a.remove();
+   setTimeout(()=>URL.revokeObjectURL(url),1000);
+   localStorage.setItem("ftLastBackup",backup.createdAt);
+   alert("Backup creato. Salvalo nell'app File o su iCloud Drive.");
+   openSettings();
+ }catch(e){
+   alert("Non sono riuscito a creare il backup.");
+ }
+}
+
+function validateFitBackup(obj){
+ if(!obj || obj.app!=="FIT TOGETHER")return {ok:false,msg:"Questo file non è un backup FIT TOGETHER."};
+ if(!obj.storage || typeof obj.storage!=="object")return {ok:false,msg:"Backup incompleto o danneggiato."};
+ if(Number(obj.backupVersion)>FT_BACKUP_VERSION)return {ok:false,msg:"Backup creato con una versione più recente dell'app."};
+ return {ok:true,msg:"Backup valido."};
+}
+
+async function importFitBackup(file){
+ if(!file)return;
+ try{
+   const text=await file.text();
+   const obj=JSON.parse(text);
+   const valid=validateFitBackup(obj);
+   if(!valid.ok){alert(valid.msg);return}
+   const created=obj.createdAt?new Date(obj.createdAt).toLocaleString("it-IT"):"data sconosciuta";
+   if(!confirm(`Backup valido del ${created}. Vuoi ripristinarlo? I dati FIT TOGETHER attuali verranno sostituiti.`))return;
+
+   // remove only FIT TOGETHER managed keys
+   fitStorageKeys().forEach(k=>localStorage.removeItem(k));
+   Object.entries(obj.storage).forEach(([k,v])=>{
+     if(v!==null && typeof v==="string")localStorage.setItem(k,v);
+   });
+
+   localStorage.setItem("ftLastBackup",new Date().toISOString());
+   alert("Backup ripristinato correttamente. L'app verrà ricaricata.");
+   location.reload();
+ }catch(e){
+   alert("Il file selezionato non è leggibile oppure è danneggiato.");
+ }
+}
+
+function clearAllFitData(){
+ const preserveOffline=localStorage.getItem("ftOfflineReady");
+ fitStorageKeys().forEach(k=>localStorage.removeItem(k));
+ if(preserveOffline)localStorage.setItem("ftOfflineReady",preserveOffline);
+}
+
+function backupHealth(){
+ const d=collectFitBackup();
+ const sessions=(()=>{try{return JSON.parse(d.storage.ftData||'{"sessions":[]}').sessions?.length||0}catch(e){return 0}})();
+ const bodyKeys=Object.keys(d.storage).filter(k=>k.startsWith("ftBody_")).length;
+ const nutriKeys=Object.keys(d.storage).filter(k=>k.startsWith("ftNutrition_")).length;
+ return {keys:Object.keys(d.storage).length,sessions,bodyKeys,nutriKeys};
+}
 
 function renderHome(){
  updateOfflineStatus();
@@ -1155,13 +1264,40 @@ function renderNutrition(){
 }
 function show(id){["home","session","together","nutrition","progressPage","safety"].forEach(x=>document.getElementById(x).classList.toggle("hidden",x!==id));if(id==="progressPage"){progressTab="overview";renderProgress();if(id==="nutrition"){nutriTab="today";renderNutrition();}}if(id==="home")renderHome()}
 function renderHistory(){let ss=profileSessions().slice().reverse();history.innerHTML=ss.length?ss.map(s=>`<div class="card pad"><b>Allenamento ${s.day}</b><div class="sub">${new Date(s.ts).toLocaleString("it-IT")}</div><div class="chips"><span class="chip">⏱ ${fmtTime(s.durationSec)}</span><span class="chip">🔥 ${s.kcal} kcal stimate</span></div></div>`).join(""):'<p class="note">Ancora nessun allenamento registrato.</p>'}
-function openStats(){let s=stats();sheet.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center"><h2>Statistiche live</h2><button onclick="modal.classList.add('hidden')">✕</button></div><div class="statline"><div class="stat"><b>${s.sessions}</b><small>Allenamenti</small></div><div class="stat"><b>${fmtTime(s.totalSec)}</b><small>Tempo totale</small></div><div class="stat"><b>${s.kcal}</b><small>kcal stimate</small></div><div class="stat"><b>${s.streak}</b><small>Streak</small></div></div><div class="card pad"><b>Settimana</b><p>${s.weekDone}/3 allenamenti completati</p></div>`;modal.classList.remove("hidden")}
+function openStats(){
+ const bh=backupHealth();let s=stats();sheet.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center"><h2>Statistiche live</h2><button onclick="modal.classList.add('hidden')">✕</button></div><div class="statline"><div class="stat"><b>${s.sessions}</b><small>Allenamenti</small></div><div class="stat"><b>${fmtTime(s.totalSec)}</b><small>Tempo totale</small></div><div class="stat"><b>${s.kcal}</b><small>kcal stimate</small></div><div class="stat"><b>${s.streak}</b><small>Streak</small></div></div><div class="card pad"><b>Settimana</b><p>${s.weekDone}/3 allenamenti completati</p></div>`;sheet.innerHTML+=`<div class="card pad"><b>💾 Protezione dati</b><p class="note">${bh.sessions} sessioni · ${bh.keys} gruppi dati locali. Ultimo backup: ${localStorage.getItem("ftLastBackup")?new Date(localStorage.getItem("ftLastBackup")).toLocaleString("it-IT"):"mai"}.</p></div>`;
+ modal.classList.remove("hidden")}
 function openSettings(){
  const cacheState=localStorage.getItem("ftOfflineReady")==="1";
+ const lastBackup=localStorage.getItem("ftLastBackup")||"";
  sheet.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center"><h2>Impostazioni</h2><button onclick="modal.classList.add('hidden')">✕</button></div>
- <div class="offlineBox"><h3>📴 Modalità Offline</h3><p class="note">L'app viene salvata sul dispositivo. I tutorial video che hai già aperto vengono memorizzati progressivamente per poterli rivedere anche senza rete.</p><div class="row" style="display:flex;justify-content:space-between;align-items:center"><span id="offlineSettingsState">${cacheState?"✅ App offline pronta":"⏳ Preparazione offline"}</span><button class="primary" onclick="prepareOffline()">PREPARA OFFLINE</button></div></div>
- <div class="card pad"><button style="width:100%" onclick="if(confirm('Azzero tutti i dati salvati?')){localStorage.removeItem('ftData');modal.classList.add('hidden');renderHome()}">Azzera tutti i dati</button></div>
- <div class="card pad"><p class="note">I dati vengono salvati localmente su questo dispositivo/browser.</p><p class="note"><b>Versione: V14.1 Header Polish</b></p></div>`;
+ <div class="offlineBox">
+  <h3>📴 Modalità Offline</h3>
+  <p class="note">L'app viene salvata sul dispositivo. I tutorial video che hai già aperto vengono memorizzati progressivamente per poterli rivedere anche senza rete.</p>
+  <div class="row" style="display:flex;justify-content:space-between;align-items:center">
+   <span id="offlineSettingsState">${cacheState?"✅ App offline pronta":"⏳ Preparazione offline"}</span>
+   <button class="primary" onclick="prepareOffline()">PREPARA OFFLINE</button>
+  </div>
+ </div>
+
+ <div class="backupBox">
+  <h3>💾 Backup & Ripristino</h3>
+  <p class="note">Esporta tutti i dati personali di FIT TOGETHER in un unico file. Potrai importarli su un altro iPhone o ripristinarli dopo aver cancellato i dati del browser.</p>
+  <div class="backupGrid">
+   <button class="primary" onclick="exportFitBackup()">ESPORTA BACKUP</button>
+   <button onclick="document.getElementById('backupFileInput').click()">IMPORTA BACKUP</button>
+  </div>
+  <input id="backupFileInput" type="file" accept=".json,application/json" class="hidden" onchange="importFitBackup(this.files&&this.files[0])">
+  <div class="backupStatus">
+   <b>Ultimo backup:</b> ${lastBackup?new Date(lastBackup).toLocaleString("it-IT"):"mai eseguito"}<br>
+   <span class="note">Il backup include allenamenti, diario, progressi, misure, nutrizione, profili, modalità adattiva e impostazioni locali.</span>
+  </div>
+ </div>
+
+ <div class="card pad">
+  <button style="width:100%" onclick="if(confirm('Azzero tutti i dati salvati?')){clearAllFitData();modal.classList.add('hidden');renderHome()}">Azzera tutti i dati</button>
+ </div>
+ <div class="card pad"><p class="note">I dati vengono salvati localmente su questo dispositivo/browser.</p><p class="note"><b>Versione: V15 Backup & Ripristino</b></p></div>`;
  modal.classList.remove("hidden")
 }
 
