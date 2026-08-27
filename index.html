@@ -102,6 +102,30 @@ main{max-width:720px;padding:14px 14px 108px}
 .smartBadge{background:#704cff;border-radius:999px;padding:5px 8px;font-size:10px}
 .smartTarget{font-size:17px;font-weight:950;margin-top:8px}
 .smartText{font-size:12px;color:#c4cedc;line-height:1.45;margin-top:6px}
+
+/* V9 DIARIO + PROGRESSI REALI */
+.progressTabs{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin:10px 0 12px}
+.progressTabs button{font-size:11px;padding:10px 6px}
+.progressTabs button.on{background:linear-gradient(135deg,#6e4cff,#9b45ff)}
+.summaryGrid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.summaryCard{background:#0d1723;border:1px solid #26364d;border-radius:14px;padding:11px}
+.summaryCard b{display:block;font-size:20px}.summaryCard small{color:#9aa8ba}
+.diaryItem{background:#0d1723;border:1px solid #26364d;border-radius:16px;padding:13px;margin:9px 0}
+.diaryTop{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.diaryMeta{font-size:11px;color:#96a5b8;margin-top:3px}
+.exerciseRow{border-top:1px solid #223146;padding:10px 0}.exerciseRow:first-child{border-top:0}
+.setTable{width:100%;border-collapse:collapse;margin-top:7px;font-size:12px}
+.setTable th,.setTable td{padding:6px 5px;border-bottom:1px solid #1d2a3c;text-align:left}
+.setTable th{color:#94a4b8;font-weight:700}
+.badgePR{display:inline-block;background:#184f2e;color:#b8ffd0;border-radius:999px;padding:4px 7px;font-size:10px;font-weight:900}
+.exerciseStat{background:#0d1723;border:1px solid #26364d;border-radius:15px;padding:12px;margin:9px 0}
+.miniBar{height:8px;background:#1a2635;border-radius:99px;overflow:hidden;margin-top:8px}.miniBar i{display:block;height:100%;background:linear-gradient(90deg,#7b50ff,#32d17c)}
+.spark{display:flex;align-items:flex-end;gap:4px;height:58px;margin-top:8px}.spark i{display:block;flex:1;min-width:5px;background:#7650ff;border-radius:5px 5px 2px 2px}
+.filterRow{display:flex;gap:6px;overflow:auto;padding-bottom:4px}.filterRow button{white-space:nowrap;font-size:11px;padding:8px 10px}
+.detailBack{margin-bottom:10px}
+.rpeSelect{display:grid;grid-template-columns:repeat(5,1fr);gap:5px;margin-top:8px}
+.rpeSelect button{font-size:18px;padding:8px 2px;opacity:.65}.rpeSelect button.sel{outline:2px solid #8b5cff;opacity:1}
+
 </style></head>
 <body>
 <main>
@@ -164,7 +188,18 @@ main{max-width:720px;padding:14px 14px 108px}
 </section>
 
 <section id="progressPage" class="hidden">
-<div class="card pad"><h2>📈 Progressi</h2><div id="history"></div></div>
+<div class="card pad">
+  <div class="row" style="display:flex;justify-content:space-between;align-items:center">
+    <div><h2 style="margin:0">📈 I tuoi progressi</h2><div class="sub" id="progressProfileLabel"></div></div>
+    <button onclick="selectProfile(profile==='dad'?'girl':'dad');renderProgress()">⇄ Profilo</button>
+  </div>
+  <div class="progressTabs">
+    <button id="ptOverview" class="on" onclick="setProgressTab('overview')">PANORAMICA</button>
+    <button id="ptDiary" onclick="setProgressTab('diary')">DIARIO</button>
+    <button id="ptExercises" onclick="setProgressTab('exercises')">ESERCIZI</button>
+  </div>
+  <div id="progressContent"></div>
+</div>
 </section>
 
 <section id="safety" class="hidden">
@@ -343,6 +378,10 @@ function renderExercise(){
  <div class="guideRow"><b>Serie in corso</b><b id="seriesText">${setDone}/${e[1]}</b></div>
  <div class="setDots" id="setDots">${dots}</div>
  <div class="recordBox"><div><div class="sub">Ripetizioni fatte</div><input id="repsInput" class="input" inputmode="numeric" placeholder="es. 12"></div><div><div class="sub">Note / carico</div><input id="noteInput" class="input" placeholder="opzionale"></div></div>
+ <div style="margin-top:10px"><div class="sub">Difficoltà percepita (RPE)</div>
+ <div class="rpeSelect" id="rpeSelect">
+   <button onclick="pickRPE(1,this)">🙂</button><button onclick="pickRPE(2,this)">😊</button><button onclick="pickRPE(3,this)">😐</button><button onclick="pickRPE(4,this)">😓</button><button onclick="pickRPE(5,this)">🥵</button>
+ </div></div>
  <button class="green bigAction" style="margin-top:12px" onclick="completeSet()">✓ SERIE COMPLETATA</button>
  </div>`;
  window.currentTip=e;
@@ -352,11 +391,125 @@ function showTip(which){
  tabHow.classList.toggle("on",which==="how");tabErr.classList.toggle("on",which==="err");tabMus.classList.toggle("on",which==="mus");
  tipPanel.innerHTML=which==="how"?e[6]:which==="err"?e[7]:`Muscoli principali: <b>${e[4]}</b>. Concentrati sul controllo del movimento, non sulla velocità.`;
 }
+
+let selectedRPE=0, progressTab="overview", progressExerciseFilter="ALL";
+
+function pickRPE(v,el){
+ selectedRPE=v;
+ document.querySelectorAll("#rpeSelect button").forEach(b=>b.classList.remove("sel"));
+ if(el)el.classList.add("sel");
+}
+
+function allExerciseLogs(){
+ const out=[];
+ profileSessions().forEach(s=>{
+   (s.logs||[]).forEach(l=>out.push({...l,ts:s.ts,day:s.day,durationSec:s.durationSec||0,kcal:s.kcal||0}));
+ });
+ return out;
+}
+function exerciseNames(){
+ return [...new Set(allExerciseLogs().map(x=>x.exercise))].sort((a,b)=>a.localeCompare(b,"it"));
+}
+function validReps(log){const n=parseInt(log.reps,10);return Number.isFinite(n)?n:null}
+function exerciseStats(name){
+ const logs=allExerciseLogs().filter(x=>x.exercise===name);
+ const nums=logs.map(validReps).filter(Number.isFinite);
+ if(!nums.length)return {name,sets:logs.length,best:0,avg:0,recentAvg:0,firstAvg:0,improvement:0,values:[]};
+ const recent=nums.slice(-Math.min(6,nums.length));
+ const first=nums.slice(0,Math.min(6,nums.length));
+ const recentAvg=recent.reduce((a,b)=>a+b,0)/recent.length;
+ const firstAvg=first.reduce((a,b)=>a+b,0)/first.length;
+ const improvement=firstAvg?Math.round((recentAvg-firstAvg)/firstAvg*100):0;
+ return {name,sets:logs.length,best:Math.max(...nums),avg:nums.reduce((a,b)=>a+b,0)/nums.length,recentAvg,firstAvg,improvement,values:nums.slice(-12)};
+}
+function weeklyStats(){
+ const now=Date.now(), d7=7*86400000, ss=profileSessions();
+ const cur=ss.filter(s=>now-s.ts<=d7), prev=ss.filter(s=>now-s.ts>d7&&now-s.ts<=2*d7);
+ const sum=(arr,key)=>arr.reduce((a,s)=>a+(s[key]||0),0);
+ const pct=(a,b)=>b?Math.round((a-b)/b*100):null;
+ return {
+   sessions:cur.length,time:sum(cur,"durationSec"),kcal:sum(cur,"kcal"),
+   sessionsDelta:pct(cur.length,prev.length),timeDelta:pct(sum(cur,"durationSec"),sum(prev,"durationSec")),
+   kcalDelta:pct(sum(cur,"kcal"),sum(prev,"kcal"))
+ };
+}
+function deltaText(v){
+ if(v===null)return "nessun confronto";
+ if(v===0)return "uguale al periodo precedente";
+ return (v>0?"+":"")+v+"% vs periodo precedente";
+}
+function setProgressTab(tab){
+ progressTab=tab;
+ ["Overview","Diary","Exercises"].forEach(x=>{
+   const el=document.getElementById("pt"+x);
+   if(el)el.classList.toggle("on",tab===x.toLowerCase());
+ });
+ renderProgress();
+}
+function renderProgress(){
+ const lab=document.getElementById("progressProfileLabel");
+ if(lab)lab.textContent=profile==="dad"?"Profilo: TU":"Profilo: FIGLIA";
+ if(progressTab==="overview")renderProgressOverview();
+ else if(progressTab==="diary")renderDiary();
+ else renderExerciseProgress();
+}
+function renderProgressOverview(){
+ const box=document.getElementById("progressContent"); if(!box)return;
+ const s=stats(), w=weeklyStats(), names=exerciseNames();
+ let best=names.map(exerciseStats).sort((a,b)=>b.improvement-a.improvement).slice(0,5);
+ box.innerHTML=`<div class="summaryGrid">
+ <div class="summaryCard"><b>${s.sessions}</b><small>Allenamenti totali</small></div>
+ <div class="summaryCard"><b>${fmtTime(s.totalSec)}</b><small>Tempo totale</small></div>
+ <div class="summaryCard"><b>${s.kcal}</b><small>kcal stimate</small></div>
+ <div class="summaryCard"><b>${s.streak}</b><small>Streak giorni</small></div>
+ </div>
+ <div class="card pad" style="margin-top:12px"><h3>Ultimi 7 giorni</h3>
+ <div class="summaryGrid">
+  <div class="summaryCard"><b>${w.sessions}</b><small>Sessioni · ${deltaText(w.sessionsDelta)}</small></div>
+  <div class="summaryCard"><b>${fmtTime(w.time)}</b><small>Tempo · ${deltaText(w.timeDelta)}</small></div>
+  <div class="summaryCard"><b>${Math.round(w.kcal)}</b><small>kcal · ${deltaText(w.kcalDelta)}</small></div>
+  <div class="summaryCard"><b>${s.weekDone}/3</b><small>Obiettivo settimanale</small></div>
+ </div></div>
+ <div class="card pad"><h3>Miglioramenti esercizi</h3>
+ ${best.length?best.map(x=>`<div class="exerciseStat"><div class="row" style="display:flex;justify-content:space-between"><b>${x.name}</b><span class="${x.improvement>=0?'trendUp':'trendDown'}">${x.improvement>=0?'+':''}${x.improvement}%</span></div><div class="sub">Media recente ${x.recentAvg.toFixed(1)} · record ${x.best}</div><div class="miniBar"><i style="width:${Math.max(5,Math.min(100,50+x.improvement))}%"></i></div></div>`).join(""):'<p class="note">Registra qualche allenamento per vedere i miglioramenti reali.</p>'}
+ </div>`;
+}
+function renderDiary(){
+ const box=document.getElementById("progressContent"); if(!box)return;
+ const ss=profileSessions().slice().sort((a,b)=>b.ts-a.ts);
+ box.innerHTML=ss.length?ss.map((s,si)=>{
+   const groups={};(s.logs||[]).forEach(l=>(groups[l.exercise]??=[]).push(l));
+   const exercises=Object.entries(groups).map(([name,logs])=>`<div class="exerciseRow"><b>${name}</b>
+     <table class="setTable"><thead><tr><th>Serie</th><th>Rep</th><th>RPE</th><th>Note</th></tr></thead><tbody>
+     ${logs.map(l=>`<tr><td>${l.set||"-"}</td><td>${l.reps||"-"}</td><td>${l.rpe?["","🙂","😊","😐","😓","🥵"][l.rpe]:"-"}</td><td>${l.note||"-"}</td></tr>`).join("")}
+     </tbody></table></div>`).join("");
+   return `<div class="diaryItem"><div class="diaryTop"><div><b>Allenamento ${s.day}</b><div class="diaryMeta">${new Date(s.ts).toLocaleString("it-IT")}</div></div><div><span class="chip">⏱ ${fmtTime(s.durationSec||0)}</span><span class="chip">🔥 ${Math.round(s.kcal||0)}</span></div></div>${exercises||'<p class="note">Nessuna serie registrata.</p>'}</div>`;
+ }).join(""):'<p class="note">Ancora nessun allenamento nel diario.</p>';
+}
+function renderExerciseProgress(){
+ const box=document.getElementById("progressContent"); if(!box)return;
+ const names=exerciseNames();
+ if(progressExerciseFilter!=="ALL"&&!names.includes(progressExerciseFilter))progressExerciseFilter="ALL";
+ const filters=`<div class="filterRow"><button class="${progressExerciseFilter==="ALL"?"primary":""}" onclick="progressExerciseFilter='ALL';renderExerciseProgress()">Tutti</button>${names.map(n=>`<button class="${progressExerciseFilter===n?"primary":""}" onclick="progressExerciseFilter=${JSON.stringify(n)};renderExerciseProgress()">${n}</button>`).join("")}</div>`;
+ const chosen=progressExerciseFilter==="ALL"?names:names.filter(n=>n===progressExerciseFilter);
+ box.innerHTML=filters+(chosen.length?chosen.map(n=>{
+   const st=exerciseStats(n), max=Math.max(...st.values,1);
+   const spark=st.values.map(v=>`<i style="height:${Math.max(8,Math.round(v/max*100))}%"></i>`).join("");
+   const logs=allExerciseLogs().filter(x=>x.exercise===n).slice(-8).reverse();
+   return `<div class="exerciseStat"><div class="row" style="display:flex;justify-content:space-between"><b>${n}</b><span class="badgePR">Record ${st.best}</span></div>
+   <div class="sub">${st.sets} serie registrate · media ${st.avg.toFixed(1)} · miglioramento ${st.improvement>=0?'+':''}${st.improvement}%</div>
+   <div class="spark">${spark||'<span class="note">Nessun dato</span>'}</div>
+   <div style="margin-top:10px">${logs.map(l=>`<div class="diaryMeta">${new Date(l.ts).toLocaleDateString("it-IT")} · Serie ${l.set||"-"} · ${l.reps||"-"} rep${l.rpe?" · RPE "+l.rpe:""}${l.note?" · "+l.note:""}</div>`).join("")}</div>
+   </div>`;
+ }).join(""):'<p class="note">Registra le ripetizioni durante gli allenamenti per costruire lo storico esercizi.</p>');
+}
 function completeSet(){
  let e=plans[profile][currentDay].ex[exIndex];
  if(setDone>=e[1])return;
  setDone++;
- repsLog.push({exercise:e[0],set:setDone,reps:repsInput.value||"",note:noteInput.value||""});
+ repsLog.push({exercise:e[0],set:setDone,reps:repsInput.value||"",note:noteInput.value||"",rpe:selectedRPE||0});
+ selectedRPE=0;
+ repsInput.value="";noteInput.value="";
  if(setDone<e[1]) showRest(e[3],`Serie ${setDone+1} di ${e[1]} • ${e[0]}`);
  else showRest(Math.min(e[3],60), exIndex<plans[profile][currentDay].ex.length-1?`Prossimo: ${plans[profile][currentDay].ex[exIndex+1][0]}`:"Ultimo recupero");
 }
@@ -383,10 +536,10 @@ function nextExercise(){
 function kcalEstimate(sec){let kg=profile==="dad"?72:53;let met=5.5;return Math.round(met*3.5*kg/200*(sec/60))}
 function finishSession(){clearInterval(sessionTicker);clearInterval(timerInt);let sec=Math.max(60,activeSeconds),d=db();d.sessions.push({profile,day:currentDay,ts:Date.now(),durationSec:sec,kcal:kcalEstimate(sec),logs:repsLog});saveDB(d);alert("Allenamento salvato!");show("home");renderHome()}
 function exitSession(){if(sessionStarted && confirm("Vuoi uscire senza completare l'allenamento?")){clearInterval(sessionTicker);clearInterval(timerInt);sessionStarted=null;show("home")}}
-function show(id){["home","session","nutrition","progressPage","safety"].forEach(x=>document.getElementById(x).classList.toggle("hidden",x!==id));if(id==="progressPage")renderHistory();if(id==="home")renderHome()}
+function show(id){["home","session","nutrition","progressPage","safety"].forEach(x=>document.getElementById(x).classList.toggle("hidden",x!==id));if(id==="progressPage"){progressTab="overview";renderProgress();}if(id==="home")renderHome()}
 function renderHistory(){let ss=profileSessions().slice().reverse();history.innerHTML=ss.length?ss.map(s=>`<div class="card pad"><b>Allenamento ${s.day}</b><div class="sub">${new Date(s.ts).toLocaleString("it-IT")}</div><div class="chips"><span class="chip">⏱ ${fmtTime(s.durationSec)}</span><span class="chip">🔥 ${s.kcal} kcal stimate</span></div></div>`).join(""):'<p class="note">Ancora nessun allenamento registrato.</p>'}
 function openStats(){let s=stats();sheet.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center"><h2>Statistiche live</h2><button onclick="modal.classList.add('hidden')">✕</button></div><div class="statline"><div class="stat"><b>${s.sessions}</b><small>Allenamenti</small></div><div class="stat"><b>${fmtTime(s.totalSec)}</b><small>Tempo totale</small></div><div class="stat"><b>${s.kcal}</b><small>kcal stimate</small></div><div class="stat"><b>${s.streak}</b><small>Streak</small></div></div><div class="card pad"><b>Settimana</b><p>${s.weekDone}/3 allenamenti completati</p></div>`;modal.classList.remove("hidden")}
-function openSettings(){sheet.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center"><h2>Impostazioni</h2><button onclick="modal.classList.add('hidden')">✕</button></div><div class="card pad"><button style="width:100%" onclick="if(confirm('Azzero tutti i dati salvati?')){localStorage.removeItem('ftData');modal.classList.add('hidden');renderHome()}">Azzera tutti i dati</button></div><div class="card pad"><p class="note">I dati vengono salvati localmente su questo dispositivo/browser.</p></div>`;modal.classList.remove("hidden")}
+function openSettings(){sheet.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center"><h2>Impostazioni</h2><button onclick="modal.classList.add('hidden')">✕</button></div><div class="card pad"><button style="width:100%" onclick="if(confirm('Azzero tutti i dati salvati?')){localStorage.removeItem('ftData');modal.classList.add('hidden');renderHome()}">Azzera tutti i dati</button></div><div class="card pad"><p class="note">I dati vengono salvati localmente su questo dispositivo/browser.</p><p class="note"><b>Versione: V9 Diario + Progressi Reali</b></p></div>`;modal.classList.remove("hidden")}
 function closeModal(e){if(e.target===modal)modal.classList.add("hidden")}
 renderHome();
 </script>
