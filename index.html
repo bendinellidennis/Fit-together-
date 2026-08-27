@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b0f14">
+<title>Fit Together</title>
+<style>
+:root{--bg:#0b0f14;--card:#151a22;--card2:#1a202a;--txt:#f7f9fc;--muted:#9ca7b8;--pri:#7c5cff;--green:#31d17c;--line:#2b3340;--warn:#f5bd55}
+*{box-sizing:border-box} body{margin:0;background:linear-gradient(180deg,#0b0f14,#0e1520);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+main{max-width:760px;margin:auto;padding:18px 15px 110px}.brand{font-size:27px;font-weight:900}.muted{color:var(--muted);font-size:13px}
+.card{background:linear-gradient(145deg,var(--card),var(--card2));border:1px solid var(--line);border-radius:20px;padding:16px;margin:12px 0}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}.row{display:flex;justify-content:space-between;align-items:center;gap:10px}
+button{border:0;border-radius:14px;padding:13px 14px;background:#262d39;color:white;font-weight:800;font-size:15px}
+button.primary{background:linear-gradient(135deg,#6255ff,#9d50ff)} button.green{background:#16452a;color:#b8ffd2}
+button.active{outline:2px solid var(--pri)}
+.pill{display:inline-block;background:#26303c;border-radius:999px;padding:6px 9px;font-size:12px;margin:2px;color:#dde6f2}
+.hidden{display:none!important}.progress{height:8px;background:#222a35;border-radius:99px;overflow:hidden}.progress>i{display:block;height:100%;background:var(--green);width:0}
+.ex{border-top:1px solid var(--line);padding:14px 0}.ex:first-child{border-top:0}.title{font-size:18px;font-weight:800}
+.demo{height:210px;border-radius:16px;background:#0d1219;position:relative;overflow:hidden;margin:10px 0;border:1px solid #222a35}
+.floor{position:absolute;left:8%;right:8%;bottom:38px;height:2px;background:#344052}
+.fig{position:absolute;left:50%;top:53%;width:170px;height:110px;transform:translate(-50%,-50%);animation:float 2.2s ease-in-out infinite alternate}
+.head{position:absolute;width:28px;height:28px;border-radius:50%;background:#f0c6a0;right:10px;top:14px}.torso{position:absolute;width:92px;height:13px;background:#5aa7ff;border-radius:8px;right:34px;top:36px;transform:rotate(3deg)}
+.limb{position:absolute;height:9px;background:#dbe6f3;border-radius:8px;transform-origin:left center}.a1{width:58px;right:23px;top:45px;transform:rotate(70deg)}.a2{width:58px;right:52px;top:45px;transform:rotate(68deg)}.l1{width:73px;left:7px;top:48px;transform:rotate(8deg)}.l2{width:73px;left:13px;top:58px;transform:rotate(12deg)}
+@keyframes float{from{transform:translate(-50%,-53%) rotate(0deg)}to{transform:translate(-50%,-42%) rotate(2deg)}}
+.timer{font-size:54px;font-weight:900;text-align:center;font-variant-numeric:tabular-nums}
+.note{font-size:13px;line-height:1.45;color:var(--muted)}.warn{border-left:4px solid var(--warn)}.ok{border-left:4px solid var(--green)}
+nav{position:fixed;left:0;right:0;bottom:0;background:#111720ee;border-top:1px solid var(--line);padding:8px 8px calc(8px + env(safe-area-inset-bottom));backdrop-filter:blur(14px)}
+nav .wrap{max-width:760px;margin:auto;display:grid;grid-template-columns:repeat(4,1fr);gap:6px}nav button{font-size:11px;padding:8px 3px;background:none;color:#a9b4c5}
+</style></head>
+<body><main>
+<div class="brand">FIT TOGETHER 💪</div><div class="muted">Casa • Mare • 3 volte a settimana</div>
+
+<section id="home">
+<div class="card"><h2>Chi si allena?</h2><div class="grid2">
+<button id="dadBtn" class="active" onclick="setProfile('dad')">👨 TU<br><span class="muted">forza • tono • massa</span></button>
+<button id="girlBtn" onclick="setProfile('girl')">👧 FIGLIA<br><span class="muted">forza • tecnica • atletismo</span></button>
+</div></div>
+<div class="card"><div class="row"><b>Questa settimana</b><b id="weekCount">0/3</b></div><div class="progress"><i id="weekBar"></i></div></div>
+<div id="workoutList"></div>
+</section>
+
+<section id="session" class="hidden">
+<button onclick="show('home')">← Allenamenti</button>
+<div class="card"><div class="row"><div><div id="sessTitle" class="title"></div><div id="sessPlace" class="muted"></div></div><span id="counter" class="pill"></span></div></div>
+<div id="exerciseView"></div>
+</section>
+
+<section id="nutrition" class="hidden">
+<div class="card"><h2>🥗 Nutrizione & recupero</h2><p class="note">La base è cibo normale, acqua e sonno. Gli integratori sono opzionali.</p></div>
+<div class="card ok"><h2>Per te</h2>
+<p><b>Proteine:</b> usa eventualmente uno shake solo per comodità quando il pasto non copre il fabbisogno.</p>
+<p><b>Creatina monoidrato:</b> è molto studiata negli adulti per forza e prestazioni ripetute. Non è obbligatoria. In presenza di patologie o farmaci, verifica prima con medico/farmacista.</p>
+<p><b>BCAA/amminoacidi:</b> spesso aggiungono poco se l'apporto di proteine complete è già adeguato.</p></div>
+<div class="card warn"><h2>Per tua figlia, 16 anni</h2>
+<p>Essere sportiva cambia il livello di allenamento, ma non trasforma automaticamente ogni integratore “naturale” in una scelta adatta a un minorenne.</p>
+<p>L'app privilegia alimenti: yogurt/latte, uova, carne, pesce, legumi, cereali, frutta e frutta secca se tollerata. Creatina, BCAA, pre-workout o altri supplementi non vengono prescritti automaticamente: se un pediatra o dietista sportivo ne approva uno, può essere aggiunto al piano.</p></div>
+<div class="card"><h2>Prima / Dopo</h2><p><b>Prima:</b> spuntino/pasto digeribile + acqua. <b>Dopo:</b> pasto normale con proteine + carboidrati + frutta/verdura e reidratazione.</p></div>
+</section>
+
+<section id="history" class="hidden"><div class="card"><h2>📈 Progressi</h2><div id="hist"></div><button onclick="resetHist()">Azzera storico</button></div></section>
+<section id="safe" class="hidden"><div class="card"><h2>🛡️ Sicurezza</h2><p>Riscaldamento 5–8 minuti. Tecnica prima della difficoltà. Fermarsi se compare dolore acuto, capogiro o malessere.</p><p>Per il profilo adolescente: niente massimali, gare di carico o cedimento forzato.</p></div></section>
+</main>
+
+<nav><div class="wrap">
+<button onclick="show('home')">🏠<br>Workout</button>
+<button onclick="show('nutrition')">🥗<br>Nutrizione</button>
+<button onclick="show('history')">📈<br>Progressi</button>
+<button onclick="show('safe')">🛡️<br>Sicurezza</button>
+</div></nav>
+
+<script>
+let profile='dad', currentDay='A', exIndex=0, setDone=0, timerInt=null;
+const plans={
+dad:{
+A:{title:"A • Spinta + Core",place:"Casa",ex:[
+["Push-up",4,"8–15",90,"Petto • spalle • tricipiti","Mani poco oltre le spalle, corpo in linea, scendi controllato e risali.","Non inarcare la schiena; gomiti non troppo larghi."],
+["Pike push-up",3,"6–12",90,"Spalle • tricipiti","Bacino alto a V rovesciata, testa verso il pavimento tra le mani, poi spingi.","Non collassare sulle spalle."],
+["Push-up stretti",3,"6–12",75,"Tricipiti • petto","Mani più vicine e gomiti aderenti al busto.","Non accorciare il movimento."],
+["Plank",3,"35–60 sec",60,"Core","Avambracci a terra, glutei e addome attivi, corpo in linea.","Non lasciare cadere il bacino."],
+["Dead bug",3,"8–12/lato",45,"Core","Schiena bassa stabile, estendi lentamente braccio e gamba opposti.","Non perdere il controllo lombare."]
+]},
+B:{title:"B • Gambe + Glutei",place:"Casa / mare",ex:[
+["Squat",4,"12–20",75,"Gambe • glutei","Piedi stabili, ginocchia seguono le punte, discesa controllata.","Ginocchia verso l'interno; talloni sollevati."],
+["Bulgarian split squat",3,"8–12/lato",90,"Quadricipiti • glutei","Piede posteriore su supporto stabile e basso; scendi verticalmente.","Supporto instabile."],
+["Affondi indietro",3,"10–14/lato",75,"Gambe • glutei","Passo indietro e ritorno spingendo col piede davanti.","Passo troppo corto."],
+["Hip bridge",4,"12–20",60,"Glutei","Solleva il bacino contraendo i glutei.","Non iperestendere la zona lombare."],
+["Calf raise",4,"15–25",45,"Polpacci","Sali lentamente sulle punte e scendi completo.","Non rimbalzare."]
+]},
+C:{title:"C • Total Body Mare",place:"Mare",ex:[
+["Camminata veloce",1,"8 min",30,"Riscaldamento","Sabbia compatta vicino alla battigia, ritmo progressivo.","Evita sprint a freddo."],
+["Push-up",4,"8–15",75,"Petto • tricipiti","Movimento controllato e corpo in linea.","Non perdere l'assetto."],
+["Squat tempo",4,"12–16",75,"Gambe","Scendi in 3 secondi, breve pausa, risali.","Non accelerare la discesa."],
+["Bear crawl",3,"20–30 sec",60,"Core • spalle","Ginocchia poco sollevate, passi corti e controllati.","Non oscillare col bacino."],
+["Affondi camminati",3,"10/lato",75,"Gambe • glutei","Passi controllati e busto alto.","Non cercare velocità."],
+["Mountain climber controllato",3,"20–30 sec",60,"Core • cardio","Ginocchia avanti alternativamente mantenendo le spalle sopra le mani.","Non rimbalzare."],
+["Plank",3,"40–60 sec",60,"Core","Mantieni una linea stabile.","Interrompi quando perdi la tecnica."]
+]}
+},
+girl:{
+A:{title:"A • Total Body Tecnica",place:"Casa",ex:[
+["Squat",3,"10–15",60,"Gambe • glutei","Scendi con controllo mantenendo piedi stabili e ginocchia allineate.","Non forzare profondità o velocità."],
+["Push-up inclinato o completo",3,"8–12",60,"Petto • braccia","Usa una superficie stabile se serve; corpo in linea.","Non usare mobili instabili."],
+["Hip bridge",3,"12–15",45,"Glutei","Solleva il bacino contraendo i glutei e torna lentamente.","Non inarcare la schiena."],
+["Bird dog",3,"8–10/lato",45,"Core • postura","Da quadrupedia estendi braccio e gamba opposti senza ruotare il bacino.","Non cercare altezza."],
+["Plank",3,"20–40 sec",45,"Core","Scegli la variante che mantiene una posizione pulita.","Stop quando la tecnica peggiora."]
+]},
+B:{title:"B • Gambe + Stabilità",place:"Casa / mare",ex:[
+["Affondo indietro",3,"8–12/lato",60,"Gambe • equilibrio","Passo indietro controllato; supporto vicino se serve.","Non perdere allineamento del ginocchio."],
+["Squat pausa",3,"10–12",60,"Gambe","Pausa breve nella posizione comoda più bassa e risali.","Nessun rimbalzo."],
+["Step-up basso",3,"8–10/lato",60,"Gambe • coordinazione","Gradino basso e stabile; sali controllando il ginocchio.","Non usare superfici scivolose."],
+["Calf raise",3,"12–20",45,"Polpacci","Sali e scendi lentamente.","Non rimbalzare."],
+["Side plank",3,"20–30 sec/lato",45,"Core","Corpo in linea, variante sulle ginocchia se serve.","Non forzare la spalla."]
+]},
+C:{title:"C • Mare Movimento",place:"Mare",ex:[
+["Camminata veloce",1,"8 min",30,"Riscaldamento","Sabbia compatta, ritmo progressivo.","Evita sprint a freddo."],
+["Squat",3,"12–15",60,"Gambe","Controllo e postura pulita.","Non cercare profondità se perdi la forma."],
+["Push-up inclinato o completo",3,"8–12",60,"Petto • braccia","Scegli la variante corretta per la tecnica.","Non arrivare a cedimento forzato."],
+["Bear crawl",3,"20 sec",60,"Core • spalle","Passi piccoli e controllati.","Non oscillare eccessivamente."],
+["Affondi camminati",3,"8/lato",60,"Gambe • glutei","Passi controllati, busto alto.","Non accelerare."],
+["Plank",3,"20–40 sec",45,"Core","Mantieni posizione stabile.","Stop quando perdi la tecnica."]
+]}
+}}
+function setProfile(p){profile=p;dadBtn.classList.toggle('active',p==='dad');girlBtn.classList.toggle('active',p==='girl');renderHome()}
+function renderHome(){let h=JSON.parse(localStorage.getItem('fithist')||'[]');let done=new Set(h.filter(x=>x.profile===profile && Date.now()-x.ts<7*864e5).map(x=>x.day)).size;weekCount.textContent=done+"/3";weekBar.style.width=(done/3*100)+"%";
+workoutList.innerHTML=Object.entries(plans[profile]).map(([k,v])=>`<div class="card"><div class="row"><div><div class="title">${v.title}</div><span class="pill">${v.place}</span><span class="pill">${v.ex.length} esercizi</span></div><button class="primary" onclick="start('${k}')">INIZIA</button></div></div>`).join('')}
+function start(day){currentDay=day;exIndex=0;setDone=0;show('session');renderExercise()}
+function renderExercise(){clearInterval(timerInt);const d=plans[profile][currentDay],e=d.ex[exIndex];sessTitle.textContent=d.title;sessPlace.textContent=d.place;counter.textContent=(exIndex+1)+"/"+d.ex.length;
+exerciseView.innerHTML=`<div class="card"><div class="title">${e[0]}</div><div><span class="pill">${e[4]}</span><span class="pill">${e[1]} serie</span><span class="pill">${e[2]}</span></div>
+<div class="demo"><div class="floor"></div><div class="fig"><div class="head"></div><div class="torso"></div><div class="limb a1"></div><div class="limb a2"></div><div class="limb l1"></div><div class="limb l2"></div></div></div>
+<h3>Come farlo</h3><p>${e[5]}</p><h3>Errori da evitare</h3><p class="note">${e[6]}</p></div>
+<div class="card"><div class="row"><b>Serie</b><b id="seriesText">0/${e[1]}</b></div><div class="progress"><i id="seriesBar"></i></div><button class="green" style="width:100%;margin-top:12px" onclick="doneSet()">✓ SERIE COMPLETATA</button></div>
+<div class="card"><h3>Recupero</h3><div class="timer" id="timer">00:00</div><button style="width:100%" onclick="skipTimer()">Salta recupero</button></div>
+<button class="primary" style="width:100%" onclick="nextEx()">Prossimo esercizio →</button>`}
+function doneSet(){const e=plans[profile][currentDay].ex[exIndex];if(setDone<e[1])setDone++;seriesText.textContent=setDone+"/"+e[1];seriesBar.style.width=(setDone/e[1]*100)+"%";startTimer(e[3])}
+function startTimer(sec){clearInterval(timerInt);let s=sec;timer.textContent=fmt(s);timerInt=setInterval(()=>{s--;timer.textContent=fmt(s);if(s<=0){clearInterval(timerInt);navigator.vibrate?.(200)}},1000)}
+function fmt(s){return String(Math.floor(s/60)).padStart(2,'0')+":"+String(s%60).padStart(2,'0')}
+function skipTimer(){clearInterval(timerInt);timer.textContent="00:00"}
+function nextEx(){const d=plans[profile][currentDay];if(exIndex<d.ex.length-1){exIndex++;setDone=0;renderExercise()}else{let h=JSON.parse(localStorage.getItem('fithist')||'[]');h.push({profile,day:currentDay,ts:Date.now()});localStorage.setItem('fithist',JSON.stringify(h));alert("Allenamento completato!");show('home');renderHome()}}
+function renderHist(){let h=JSON.parse(localStorage.getItem('fithist')||'[]').reverse();hist.innerHTML=h.length?h.map(x=>`<p>✓ ${x.profile==='dad'?'Tu':'Figlia'} • Allenamento ${x.day} • ${new Date(x.ts).toLocaleDateString('it-IT')}</p>`).join(''):'<p class="note">Ancora nessun allenamento registrato.</p>'}
+function resetHist(){localStorage.removeItem('fithist');renderHist();renderHome()}
+function show(id){['home','session','nutrition','history','safe'].forEach(x=>document.getElementById(x).classList.toggle('hidden',x!==id));if(id==='history')renderHist()}
+renderHome();
+</script></body></html>
