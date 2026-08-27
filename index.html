@@ -141,6 +141,22 @@ main{max-width:720px;padding:14px 14px 108px}
 .togetherPerson{background:#0d1723;border:1px solid #28384e;border-radius:14px;padding:10px;text-align:center}
 .togetherPerson.active{outline:2px solid #8a5cff;box-shadow:0 0 22px #8b5cff2b}
 .turnBadge{display:inline-block;background:#7a4fff;border-radius:999px;padding:5px 8px;font-size:10px;font-weight:900}
+
+/* V12 PHYSICAL DASHBOARD */
+.bodyGrid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.bodyCard{background:#0d1723;border:1px solid #26374e;border-radius:15px;padding:12px}
+.bodyCard b{display:block;font-size:20px}
+.bodyCard small{color:#9eabba}
+.measureRow{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+.measureRow label{font-size:11px;color:#9eabba}
+.measureRow input{width:100%;margin-top:4px}
+.goalBox{background:linear-gradient(145deg,#10182a,#18142b);border:1px solid #5f45a9;border-radius:16px;padding:13px;margin-top:12px}
+.bodyTrend{display:flex;align-items:flex-end;gap:5px;height:90px;margin-top:12px}
+.bodyTrend i{display:block;flex:1;background:linear-gradient(#8b5cff,#34d17d);border-radius:5px 5px 2px 2px;min-width:5px}
+.recordList{margin-top:10px}
+.recordItem{display:flex;justify-content:space-between;gap:10px;border-top:1px solid #223147;padding:9px 0;font-size:12px}
+.recordItem:first-child{border-top:0}
+
 </style></head>
 <body>
 <main>
@@ -252,12 +268,14 @@ main{max-width:720px;padding:14px 14px 108px}
     <div><h2 style="margin:0">📈 I tuoi progressi</h2><div class="sub" id="progressProfileLabel"></div></div>
     <button onclick="selectProfile(profile==='dad'?'girl':'dad');renderProgress()">⇄ Profilo</button>
   </div>
-  <div class="progressTabs">
+  <div class="progressTabs" style="grid-template-columns:repeat(4,1fr)">
     <button id="ptOverview" class="on" onclick="setProgressTab('overview')">PANORAMICA</button>
     <button id="ptDiary" onclick="setProgressTab('diary')">DIARIO</button>
     <button id="ptExercises" onclick="setProgressTab('exercises')">ESERCIZI</button>
+    <button id="ptBody" onclick="setProgressTab('body')">CORPO</button>
   </div>
   <div id="progressContent"></div>
+<div id="bodyDashboardWrap" class="hidden"></div>
 </div>
 </section>
 
@@ -616,17 +634,105 @@ function deltaText(v){
  if(v===0)return "uguale al periodo precedente";
  return (v>0?"+":"")+v+"% vs periodo precedente";
 }
+
+function bodyDbKey(){return "ftBody_"+profile}
+function bodyDb(){
+ try{return JSON.parse(localStorage.getItem(bodyDbKey())||'{"records":[],"goal":{}}')}catch(e){return {records:[],goal:{}}}
+}
+function saveBodyDb(d){localStorage.setItem(bodyDbKey(),JSON.stringify(d))}
+function saveBodyRecord(){
+ const d=bodyDb();
+ const get=id=>document.getElementById(id)?.value.trim()||"";
+ const rec={
+   ts:Date.now(),
+   weight:get("bodyWeight"),
+   waist:get("bodyWaist"),
+   chest:get("bodyChest"),
+   hips:get("bodyHips"),
+   arm:get("bodyArm"),
+   thigh:get("bodyThigh"),
+   note:get("bodyNote")
+ };
+ if(!Object.values(rec).some((v,k)=>k>0&&v)){alert("Inserisci almeno un dato.");return}
+ d.records.push(rec);saveBodyDb(d);renderBodyDashboard();
+}
+function saveBodyGoal(){
+ const d=bodyDb();
+ d.goal={
+   text:document.getElementById("bodyGoalText")?.value.trim()||"",
+   target:document.getElementById("bodyGoalTarget")?.value.trim()||""
+ };
+ saveBodyDb(d);renderBodyDashboard();
+}
+function bodyNumbers(field){
+ return bodyDb().records.map(r=>parseFloat(String(r[field]).replace(",","."))).filter(Number.isFinite)
+}
+function bodyDelta(field){
+ const vals=bodyNumbers(field);if(vals.length<2)return null;return vals[vals.length-1]-vals[0]
+}
+function bodySpark(field){
+ const vals=bodyNumbers(field);if(!vals.length)return '<span class="note">Nessun dato</span>';
+ const min=Math.min(...vals),max=Math.max(...vals),range=Math.max(.1,max-min);
+ return vals.slice(-12).map(v=>`<i style="height:${Math.max(8,Math.round((v-min)/range*75)+20)}%"></i>`).join("");
+}
+function renderBodyDashboard(){
+ const wrap=document.getElementById("bodyDashboardWrap");if(!wrap)return;
+ const d=bodyDb(),last=d.records[d.records.length-1]||{},teen=profile==="girl";
+ const delta=bodyDelta("weight");
+ const recent=d.records.slice().reverse().slice(0,8);
+ wrap.innerHTML=`<div class="card pad">
+   <h3>${teen?"🏃 Dashboard atletica":"📏 Dashboard fisica"}</h3>
+   <p class="note">${teen?"Per il profilo adolescente questa sezione serve a monitorare costanza e performance. Peso e misure sono opzionali e non generano obiettivi di dimagrimento.":"Registra solo i dati che vuoi seguire. Nessun valore è obbligatorio."}</p>
+   <div class="bodyGrid">
+    <div class="bodyCard"><b>${last.weight||"—"}${last.weight?" kg":""}</b><small>Peso ultimo</small></div>
+    <div class="bodyCard"><b>${delta===null?"—":(delta>0?"+":"")+delta.toFixed(1)+" kg"}</b><small>Variazione registrata</small></div>
+    <div class="bodyCard"><b>${stats().sessions}</b><small>Allenamenti</small></div>
+    <div class="bodyCard"><b>${stats().streak}</b><small>Streak giorni</small></div>
+   </div>
+   <div class="bodyTrend">${bodySpark("weight")}</div>
+ </div>
+ <div class="card pad">
+   <h3>Nuova registrazione</h3>
+   <div class="measureRow">
+    <label>Peso kg<input id="bodyWeight" class="input" inputmode="decimal" placeholder="es. 72.0"></label>
+    <label>Vita cm<input id="bodyWaist" class="input" inputmode="decimal" placeholder="opzionale"></label>
+    <label>Torace cm<input id="bodyChest" class="input" inputmode="decimal" placeholder="opzionale"></label>
+    <label>Fianchi cm<input id="bodyHips" class="input" inputmode="decimal" placeholder="opzionale"></label>
+    <label>Braccio cm<input id="bodyArm" class="input" inputmode="decimal" placeholder="opzionale"></label>
+    <label>Coscia cm<input id="bodyThigh" class="input" inputmode="decimal" placeholder="opzionale"></label>
+   </div>
+   <label class="sub" style="display:block;margin-top:9px">Nota</label>
+   <input id="bodyNote" class="input" placeholder="es. energia, sonno, sensazioni">
+   <button class="green" style="width:100%;margin-top:10px" onclick="saveBodyRecord()">SALVA DATI</button>
+ </div>
+ <div class="goalBox">
+   <h3>${teen?"🎯 Obiettivo sportivo":"🎯 Obiettivo personale"}</h3>
+   <input id="bodyGoalText" class="input" value="${d.goal.text||""}" placeholder="${teen?"es. 12 push-up puliti":"es. aumentare forza e massa mantenendo definizione"}">
+   <input id="bodyGoalTarget" class="input" style="margin-top:8px" value="${d.goal.target||""}" placeholder="${teen?"es. completare 3 allenamenti/settimana":"Target libero / nota"}">
+   <button class="primary" style="width:100%;margin-top:9px" onclick="saveBodyGoal()">SALVA OBIETTIVO</button>
+ </div>
+ <div class="card pad"><h3>Storico</h3><div class="recordList">${recent.length?recent.map(r=>`<div class="recordItem"><div><b>${new Date(r.ts).toLocaleDateString("it-IT")}</b><div class="sub">${r.note||""}</div></div><div style="text-align:right">${r.weight?r.weight+" kg":""}${r.waist?" · vita "+r.waist+" cm":""}</div></div>`).join(""):'<p class="note">Nessuna registrazione ancora.</p>'}</div></div>`;
+}
 function setProgressTab(tab){
  progressTab=tab;
- ["Overview","Diary","Exercises"].forEach(x=>{
-   const el=document.getElementById("pt"+x);
-   if(el)el.classList.toggle("on",tab===x.toLowerCase());
- });
+ const map={overview:"ptOverview",diary:"ptDiary",exercises:"ptExercises",body:"ptBody"};
+ Object.values(map).forEach(id=>document.getElementById(id)?.classList.remove("on"));
+ document.getElementById(map[tab])?.classList.add("on");
  renderProgress();
 }
 function renderProgress(){
  const lab=document.getElementById("progressProfileLabel");
  if(lab)lab.textContent=profile==="dad"?"Profilo: TU":"Profilo: FIGLIA";
+ const content=document.getElementById("progressContent");
+ const bodyWrap=document.getElementById("bodyDashboardWrap");
+ if(progressTab==="body"){
+   if(content)content.classList.add("hidden");
+   if(bodyWrap)bodyWrap.classList.remove("hidden");
+   renderBodyDashboard();
+   return;
+ }
+ if(content)content.classList.remove("hidden");
+ if(bodyWrap)bodyWrap.classList.add("hidden");
  if(progressTab==="overview")renderProgressOverview();
  else if(progressTab==="diary")renderDiary();
  else renderExerciseProgress();
@@ -860,7 +966,7 @@ function exitSession(){
 function show(id){["home","session","together","nutrition","progressPage","safety"].forEach(x=>document.getElementById(x).classList.toggle("hidden",x!==id));if(id==="progressPage"){progressTab="overview";renderProgress();}if(id==="home")renderHome()}
 function renderHistory(){let ss=profileSessions().slice().reverse();history.innerHTML=ss.length?ss.map(s=>`<div class="card pad"><b>Allenamento ${s.day}</b><div class="sub">${new Date(s.ts).toLocaleString("it-IT")}</div><div class="chips"><span class="chip">⏱ ${fmtTime(s.durationSec)}</span><span class="chip">🔥 ${s.kcal} kcal stimate</span></div></div>`).join(""):'<p class="note">Ancora nessun allenamento registrato.</p>'}
 function openStats(){let s=stats();sheet.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center"><h2>Statistiche live</h2><button onclick="modal.classList.add('hidden')">✕</button></div><div class="statline"><div class="stat"><b>${s.sessions}</b><small>Allenamenti</small></div><div class="stat"><b>${fmtTime(s.totalSec)}</b><small>Tempo totale</small></div><div class="stat"><b>${s.kcal}</b><small>kcal stimate</small></div><div class="stat"><b>${s.streak}</b><small>Streak</small></div></div><div class="card pad"><b>Settimana</b><p>${s.weekDone}/3 allenamenti completati</p></div>`;modal.classList.remove("hidden")}
-function openSettings(){sheet.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center"><h2>Impostazioni</h2><button onclick="modal.classList.add('hidden')">✕</button></div><div class="card pad"><button style="width:100%" onclick="if(confirm('Azzero tutti i dati salvati?')){localStorage.removeItem('ftData');modal.classList.add('hidden');renderHome()}">Azzera tutti i dati</button></div><div class="card pad"><p class="note">I dati vengono salvati localmente su questo dispositivo/browser.</p><p class="note"><b>Versione: V11 Allenati Insieme</b></p></div>`;modal.classList.remove("hidden")}
+function openSettings(){sheet.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center"><h2>Impostazioni</h2><button onclick="modal.classList.add('hidden')">✕</button></div><div class="card pad"><button style="width:100%" onclick="if(confirm('Azzero tutti i dati salvati?')){localStorage.removeItem('ftData');modal.classList.add('hidden');renderHome()}">Azzera tutti i dati</button></div><div class="card pad"><p class="note">I dati vengono salvati localmente su questo dispositivo/browser.</p><p class="note"><b>Versione: V12 Dashboard Fisica</b></p></div>`;modal.classList.remove("hidden")}
 function closeModal(e){if(e.target===modal)modal.classList.add("hidden")}
 renderHome();
 </script>
