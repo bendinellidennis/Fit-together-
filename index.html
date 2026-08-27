@@ -95,6 +95,15 @@ main{max-width:720px;padding:14px 14px 108px}
 .bigAction{width:100%;padding:15px;font-size:16px}
 .restOverlay{position:fixed;inset:0;background:#05080df2;z-index:120;display:flex;align-items:center;justify-content:center;padding:18px}.restCard{width:min(430px,100%);text-align:center;background:#0e1723;border:1px solid #304158;border-radius:26px;padding:22px}.restClock{font-size:74px;font-weight:950;font-variant-numeric:tabular-nums;margin:12px 0}.restNext{color:#a9b6c6;font-size:13px}
 
+
+/* V8 SMART PROGRESSION */
+.smartBox{background:linear-gradient(145deg,#111a2b,#17142b);border:1px solid #5b43a6;border-radius:16px;padding:13px;margin:12px 0;box-shadow:0 10px 26px #6f4cff1c}
+.smartTitle{display:flex;justify-content:space-between;align-items:center;gap:8px;font-weight:900}
+.smartBadge{background:#6e4bff;color:white;border-radius:999px;padding:5px 8px;font-size:10px}
+.smartText{font-size:13px;line-height:1.45;color:#c7d0dd;margin-top:8px}
+.smartTarget{font-size:18px;font-weight:950;color:#fff;margin-top:8px}
+.trendUp{color:#50db8e}.trendKeep{color:#70a8ff}.trendDown{color:#ffc85e}
+
 </style></head>
 <body>
 <main>
@@ -275,6 +284,65 @@ function exerciseInfo(e){
  };
  return {easy:easy[e[0]]||"Riduci ripetizioni o escursione mantenendo tecnica pulita.",hard:hard[e[0]]||"Aumenta gradualmente controllo o ripetizioni senza perdere tecnica."};
 }
+
+function parseRepRange(txt){
+ let m=String(txt).match(/(\d+)\s*[–-]\s*(\d+)/);
+ if(m)return {min:+m[1],max:+m[2]};
+ let n=String(txt).match(/^(\d+)/);
+ return n?{min:+n[1],max:+n[1]}:{min:null,max:null};
+}
+function previousExerciseLogs(name){
+ let ss=profileSessions().slice().sort((a,b)=>b.ts-a.ts);
+ for(let s of ss){
+   let logs=(s.logs||[]).filter(x=>x.exercise===name);
+   if(logs.length)return logs;
+ }
+ return [];
+}
+function progressionAdvice(e){
+ let range=parseRepRange(e[2]), logs=previousExerciseLogs(e[0]);
+ if(!logs.length) return {
+   cls:"trendKeep",icon:"✨",label:"PRIMA VOLTA",
+   target:`Obiettivo: ${e[2]}`,
+   text:"Parti dal limite basso del range e privilegia una tecnica pulita. L'app userà questa seduta come riferimento per la prossima."
+ };
+ let nums=logs.map(x=>parseInt(x.reps,10)).filter(Number.isFinite);
+ if(!nums.length || range.min===null) return {
+   cls:"trendKeep",icon:"↔️",label:"MANTIENI",
+   target:`Obiettivo: ${e[2]}`,
+   text:"La seduta precedente non contiene abbastanza ripetizioni registrate per calcolare una progressione affidabile."
+ };
+ let avg=nums.reduce((a,b)=>a+b,0)/nums.length;
+ let allTop = nums.length>=Math.min(e[1],3) && nums.every(n=>n>=range.max);
+ let below = avg < range.min;
+ if(allTop){
+   if(profile==="girl") return {
+     cls:"trendUp",icon:"↗️",label:"PROGRESSIONE",
+     target:`Mantieni ${e[2]} con tecnica più controllata`,
+     text:"Hai raggiunto il limite alto nelle serie registrate. Per il profilo adolescente aumentiamo prima controllo, qualità o una piccola quantità di ripetizioni, senza inseguire carichi massimali."
+   };
+   return {
+     cls:"trendUp",icon:"↗️",label:"AUMENTA",
+     target:`Supera leggermente l'ultima prestazione`,
+     text:"Hai raggiunto il limite alto del range. Mantieni la tecnica e aumenta gradualmente difficoltà, tempo sotto tensione oppure un piccolo carico se l'esercizio lo consente."
+   };
+ }
+ if(below) return {
+   cls:"trendDown",icon:"↘️",label:"RIDUCI",
+   target:`Torna verso ${range.min} ripetizioni pulite`,
+   text:"La media precedente era sotto il target. Riduci leggermente difficoltà o carico e ricostruisci serie tecnicamente pulite."
+ };
+ let target=Math.min(range.max,Math.max(range.min,Math.round(avg)+1));
+ return {
+   cls:"trendKeep",icon:"➡️",label:"+1 REP",
+   target:`Prova circa ${target} ripetizioni per serie`,
+   text:`Ultima media registrata: ${avg.toFixed(1)}. Oggi prova ad aggiungere circa una ripetizione mantenendo la stessa qualità del movimento.`
+ };
+}
+function progressionHTML(e){
+ let a=progressionAdvice(e);
+ return `<div class="smartBox"><div class="smartTitle"><span class="${a.cls}">${a.icon} Progressione intelligente</span><span class="smartBadge">${a.label}</span></div><div class="smartTarget">${a.target}</div><div class="smartText">${a.text}</div></div>`;
+}
 function renderExercise(){
  clearInterval(timerInt);
  let w=plans[profile][currentDay],e=w.ex[exIndex],inf=exerciseInfo(e);
@@ -284,6 +352,7 @@ function renderExercise(){
  exerciseView.innerHTML=`<div class="card pad">
  <div class="exerciseHeader">${e[0]}</div>
  <div class="exerciseMeta"><span class="chip">${e[4]}</span><span class="chip">${e[1]} serie</span><span class="chip">${e[2]}</span></div>
+ ${progressionHTML(e)}
  ${mediaBlock(e[5],e[0])}
  <div class="tabs"><button id="tabHow" class="on" onclick="showTip('how')">COME FARLO</button><button id="tabErr" onclick="showTip('err')">ERRORI</button><button id="tabMus" onclick="showTip('mus')">MUSCOLI</button></div>
  <div id="tipPanel" class="infoPanel">${e[6]}</div>
@@ -334,9 +403,20 @@ function kcalEstimate(sec){let kg=profile==="dad"?72:53;let met=5.5;return Math.
 function finishSession(){clearInterval(sessionTicker);clearInterval(timerInt);let sec=Math.max(60,activeSeconds),d=db();d.sessions.push({profile,day:currentDay,ts:Date.now(),durationSec:sec,kcal:kcalEstimate(sec),logs:repsLog});saveDB(d);alert("Allenamento salvato!");show("home");renderHome()}
 function exitSession(){if(sessionStarted && confirm("Vuoi uscire senza completare l'allenamento?")){clearInterval(sessionTicker);clearInterval(timerInt);sessionStarted=null;show("home")}}
 function show(id){["home","session","nutrition","progressPage","safety"].forEach(x=>document.getElementById(x).classList.toggle("hidden",x!==id));if(id==="progressPage")renderHistory();if(id==="home")renderHome()}
-function renderHistory(){let ss=profileSessions().slice().reverse();history.innerHTML=ss.length?ss.map(s=>`<div class="card pad"><b>Allenamento ${s.day}</b><div class="sub">${new Date(s.ts).toLocaleString("it-IT")}</div><div class="chips"><span class="chip">⏱ ${fmtTime(s.durationSec)}</span><span class="chip">🔥 ${s.kcal} kcal stimate</span></div></div>`).join(""):'<p class="note">Ancora nessun allenamento registrato.</p>'}
-function openStats(){let s=stats();sheet.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center"><h2>Statistiche live</h2><button onclick="modal.classList.add('hidden')">✕</button></div><div class="statline"><div class="stat"><b>${s.sessions}</b><small>Allenamenti</small></div><div class="stat"><b>${fmtTime(s.totalSec)}</b><small>Tempo totale</small></div><div class="stat"><b>${s.kcal}</b><small>kcal stimate</small></div><div class="stat"><b>${s.streak}</b><small>Streak</small></div></div><div class="card pad"><b>Settimana</b><p>${s.weekDone}/3 allenamenti completati</p></div>`;modal.classList.remove("hidden")}
-function openSettings(){sheet.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center"><h2>Impostazioni</h2><button onclick="modal.classList.add('hidden')">✕</button></div><div class="card pad"><button style="width:100%" onclick="if(confirm('Azzero tutti i dati salvati?')){localStorage.removeItem('ftData');modal.classList.add('hidden');renderHome()}">Azzera tutti i dati</button></div><div class="card pad"><p class="note">I dati vengono salvati localmente su questo dispositivo/browser.</p></div>`;modal.classList.remove("hidden")}
+function renderHistory(){let ss=profileSessions().slice().reverse();history.innerHTML=ss.length?ss.map(s=>{let logtxt=(s.logs||[]).filter(x=>x.reps).slice(0,4).map(x=>`${x.exercise}: ${x.reps}`).join(" · ");return `<div class="card pad"><b>Allenamento ${s.day}</b><div class="sub">${new Date(s.ts).toLocaleString("it-IT")}</div><div class="chips"><span class="chip">⏱ ${fmtTime(s.durationSec)}</span><span class="chip">🔥 ${s.kcal} kcal stimate</span></div>${logtxt?`<div class="note" style="margin-top:8px">${logtxt}</div>`:""}</div>`}).join(""):'<p class="note">Ancora nessun allenamento registrato.</p>'}
+function openStats(){
+ let s=stats(), ss=profileSessions();
+ let latest={};
+ ss.slice().sort((a,b)=>b.ts-a.ts).forEach(sess=>(sess.logs||[]).forEach(l=>{if(!latest[l.exercise])latest[l.exercise]=l}));
+ let currentPlan=plans[profile], names=[...new Set(Object.values(currentPlan).flatMap(w=>w.ex.map(e=>e[0])))];
+ let adv=names.slice(0,8).map(n=>{let e=Object.values(currentPlan).flatMap(w=>w.ex).find(x=>x[0]===n);let a=progressionAdvice(e);return `<div class="stat" style="margin-bottom:7px"><b style="font-size:13px">${n}</b><small>${a.icon} ${a.label} · ${a.target}</small></div>`}).join("");
+ sheet.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center"><h2>Statistiche live</h2><button onclick="modal.classList.add('hidden')">✕</button></div>
+ <div class="statline"><div class="stat"><b>${s.sessions}</b><small>Allenamenti</small></div><div class="stat"><b>${fmtTime(s.totalSec)}</b><small>Tempo totale</small></div><div class="stat"><b>${s.kcal}</b><small>kcal stimate</small></div><div class="stat"><b>${s.streak}</b><small>Streak</small></div></div>
+ <div class="card pad"><b>Settimana</b><p>${s.weekDone}/3 allenamenti completati</p></div>
+ <div class="card pad"><h3>Progressione consigliata</h3>${adv||'<p class="note">Completa il primo allenamento per attivare i suggerimenti.</p>'}</div>`;
+ modal.classList.remove("hidden")
+}
+function openSettingsfunction openSettings(){sheet.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center"><h2>Impostazioni</h2><button onclick="modal.classList.add('hidden')">✕</button></div><div class="card pad"><button style="width:100%" onclick="if(confirm('Azzero tutti i dati salvati?')){localStorage.removeItem('ftData');modal.classList.add('hidden');renderHome()}">Azzera tutti i dati</button></div><div class="card pad"><p class="note">I dati vengono salvati localmente su questo dispositivo/browser.</p></div>`;modal.classList.remove("hidden")}
 function closeModal(e){if(e.target===modal)modal.classList.add("hidden")}
 renderHome();
 </script>
