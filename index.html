@@ -210,17 +210,30 @@ main{max-width:720px;padding:14px 14px 108px}
 .backupOk{color:#baffd0}.backupWarn{color:#ffd0a7}
 
 
-/* V16 SMART WEEKLY PLANNER */
-.planBox{background:linear-gradient(145deg,#101827,#19142c);border:1px solid #6047aa;border-radius:18px;padding:14px;margin:12px 0}
+/* V16.1 SMART WEEKLY PLANNER LAYOUT FIX */
+.planBox{width:100%;background:linear-gradient(145deg,#101827,#19142c);border:1px solid #6047aa;border-radius:18px;padding:14px;margin:12px 0}
+.planBox>.row{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:10px}
+.planBox>.row>div:first-child{min-width:0;flex:1}
+.planBox>.row b{font-size:17px}
+.planBox>.row .sub{font-size:11px;line-height:1.35}
+.planBox>.row>button{flex:0 0 auto;padding:10px 12px;font-size:12px}
+.planToday{background:#0d1723;border:1px solid #2a3b52;border-radius:15px;padding:12px;margin-top:10px}
+.planToday .big{font-size:18px;font-weight:950;line-height:1.2}
+.planReason{font-size:11px;color:#aab6c6;line-height:1.4;margin-top:6px}
+.planToday .chips{margin-top:7px}
+.planToday .chip{font-size:10px}
+.planToday .primary{font-size:13px;padding:11px}
 .planDays{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin-top:10px}
 .planDay{background:#0d1723;border:1px solid #28384e;border-radius:12px;padding:8px 3px;text-align:center;font-size:10px}
 .planDay.sel{outline:2px solid #8a5cff;background:#17152b}
 .planDay.done{border-color:#2f8e55;color:#baffd0}
-.planToday{background:#0d1723;border:1px solid #2a3b52;border-radius:15px;padding:12px;margin-top:10px}
-.planToday .big{font-size:22px;font-weight:950}
 .planGrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
-.planReason{font-size:12px;color:#aab6c6;line-height:1.45;margin-top:7px}
-
+@media(max-width:430px){
+ .planBox{padding:12px}
+ .planBox>.row b{font-size:16px}
+ .planBox>.row>button{padding:9px 10px;font-size:11px}
+ .planToday .big{font-size:17px}
+}
 </style><link rel="manifest" href="manifest.webmanifest">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -267,6 +280,8 @@ main{max-width:720px;padding:14px 14px 108px}
 </div>
 
 <div class="card pad week"><b>📅 Questa settimana</b><div class="weekbar"><i id="weekBar"></i></div>
+
+<b id="weekText">0/3</b></div>
 <div class="planBox">
   <div class="row" style="display:flex;justify-content:space-between;align-items:center">
     <div><b>🧠 Planner settimanale</b><div class="sub">Il prossimo allenamento viene scelto usando storico, recupero e giorni disponibili.</div></div>
@@ -274,7 +289,7 @@ main{max-width:720px;padding:14px 14px 108px}
   </div>
   <div id="plannerHome"></div>
 </div>
-<b id="weekText">0/3</b></div>
+
 
 
 
@@ -735,7 +750,7 @@ function renderPlannerHome(){
  const p=plannerSuggestion(),w=p.next.w;
  box.innerHTML=`<div class="planToday">
    <div class="sub">${p.scheduled?"OGGI È UN GIORNO PROGRAMMATO":"OGGI NON È PROGRAMMATO"}</div>
-   <div class="big">${p.rest.ready?"💪":"🛌"} ${p.rest.ready?`Consigliato: ${p.next.k} · ${w.name}`:"Recupero consigliato"}</div>
+   <div class="big">${p.rest.ready?"💪":"🛌"} ${p.rest.ready?`Consigliato: ${w.name}`:"Recupero consigliato"}</div>
    <div class="planReason">${p.rest.text}</div>
    <div class="chips"><span class="chip">Settimana ${p.week.length}/${p.target}</span><span class="chip">${w.mins||45} min</span></div>
    ${p.rest.ready?`<button class="primary" style="width:100%;margin-top:9px" onclick="start('${p.next.k}')">INIZIA ${p.next.k} ▶</button>`:""}
@@ -1411,7 +1426,7 @@ function openSettings(){
  <div class="card pad">
   <button style="width:100%" onclick="if(confirm('Azzero tutti i dati salvati?')){clearAllFitData();modal.classList.add('hidden');renderHome()}">Azzera tutti i dati</button>
  </div>
- <div class="card pad"><p class="note">I dati vengono salvati localmente su questo dispositivo/browser.</p><p class="note"><b>Versione: V16 Planner Settimanale</b></p></div>`;
+ <div class="card pad"><p class="note">I dati vengono salvati localmente su questo dispositivo/browser.</p><p class="note"><b>Versione: V16.1 Planner Layout Fix</b></p></div>`;
  modal.classList.remove("hidden")
 }
 
