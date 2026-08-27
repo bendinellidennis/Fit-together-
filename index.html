@@ -126,6 +126,14 @@ main{max-width:720px;padding:14px 14px 108px}
 .rpeSelect{display:grid;grid-template-columns:repeat(5,1fr);gap:5px;margin-top:8px}
 .rpeSelect button{font-size:18px;padding:8px 2px;opacity:.65}.rpeSelect button.sel{outline:2px solid #8b5cff;opacity:1}
 
+
+/* V10 ADAPTIVE WORKOUT */
+.adaptBox{background:linear-gradient(145deg,#101827,#17142b);border:1px solid #5d45a9;border-radius:18px;padding:14px;margin:12px 0}
+.adaptGrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.adaptGrid button{font-size:12px;padding:10px 8px}
+.adaptGrid button.sel{background:linear-gradient(135deg,#6f4cff,#9c43ff)}
+.adaptLabel{font-size:11px;color:#9eaabc;margin-top:10px;margin-bottom:5px}
+.adaptSummary{background:#0c1520;border:1px solid #25354b;border-radius:14px;padding:11px;margin-top:10px;font-size:12px;line-height:1.45}
 </style></head>
 <body>
 <main>
@@ -169,6 +177,35 @@ main{max-width:720px;padding:14px 14px 108px}
 
 <div class="card pad week"><b>📅 Questa settimana</b><div class="weekbar"><i id="weekBar"></i></div><b id="weekText">0/3</b></div>
 
+
+<div class="adaptBox">
+  <div class="row" style="display:flex;justify-content:space-between;align-items:center">
+    <div><b>⚡ Allenamento adattivo</b><div class="sub">Adatta A/B/C a dove sei e al tempo che hai.</div></div>
+    <button onclick="toggleAdaptive()">MODIFICA</button>
+  </div>
+  <div id="adaptiveControls" class="hidden">
+    <div class="adaptLabel">Dove ti alleni?</div>
+    <div class="adaptGrid">
+      <button onclick="setAdaptive('location','Casa',this)">🏠 Casa</button>
+      <button onclick="setAdaptive('location','Mare',this)">🌊 Mare</button>
+    </div>
+    <div class="adaptLabel">Tempo disponibile</div>
+    <div class="adaptGrid">
+      <button onclick="setAdaptive('minutes',20,this)">20 min</button>
+      <button onclick="setAdaptive('minutes',30,this)">30 min</button>
+      <button onclick="setAdaptive('minutes',45,this)">45 min</button>
+      <button onclick="setAdaptive('minutes',60,this)">60 min</button>
+    </div>
+    <div class="adaptLabel">Attrezzatura disponibile</div>
+    <div class="adaptGrid">
+      <button onclick="setAdaptive('equipment','Nessuna',this)">Solo corpo libero</button>
+      <button onclick="setAdaptive('equipment','Zaino',this)">🎒 Zaino</button>
+      <button onclick="setAdaptive('equipment','Elastico',this)">🟣 Elastico</button>
+      <button onclick="setAdaptive('equipment','Completa',this)">Più attrezzi</button>
+    </div>
+    <div id="adaptiveSummary" class="adaptSummary"></div>
+  </div>
+</div>
 <div id="workouts"></div>
 </section>
 
@@ -251,7 +288,7 @@ C:{name:"C • Mare Movimento",place:"Mare",img:"data:image/jpeg;base64,/9j/4AAQ
 ["Affondi",3,"8/lato",60,"Gambe • equilibrio","lunge","Passi stabili sulla sabbia compatta.","Evita superfici irregolari."],
 ["Plank",3,"20–40 sec",45,"Core","plank","Corpo in linea.","Stop quando perdi la posizione."]]}
 }};
-let profile=localStorage.getItem("ftProfile")||"dad", currentDay="A", exIndex=0, setDone=0, timerInt=null, sessionStarted=null, sessionTicker=null, repsLog=[], activeSeconds=0;
+let profile=localStorage.getItem("ftProfile")||"dad", currentDay="A", exIndex=0, setDone=0, timerInt=null, sessionStarted=null, sessionTicker=null, repsLog=[], activeSeconds=0, sessionWorkout=null;
 
 function db(){return JSON.parse(localStorage.getItem("ftData")||'{"sessions":[]}')}
 function saveDB(d){localStorage.setItem("ftData",JSON.stringify(d))}
@@ -267,20 +304,86 @@ function stats(){
  return {sessions:ss.length,totalSec,kcal:Math.round(kcal),streak,weekDone,pct:Math.min(100,Math.round(weekDone/3*100))}
 }
 function fmtTime(sec){if(sec<3600)return Math.round(sec/60)+"m";return Math.floor(sec/3600)+"h "+Math.round((sec%3600)/60)+"m"}
+
+let adaptiveMode=JSON.parse(localStorage.getItem("ftAdaptive")||'{"enabled":false,"location":"Casa","minutes":45,"equipment":"Nessuna"}');
+
+function toggleAdaptive(){
+ adaptiveMode.enabled=!adaptiveMode.enabled;
+ localStorage.setItem("ftAdaptive",JSON.stringify(adaptiveMode));
+ renderHome();
+}
+function setAdaptive(key,val,el){
+ adaptiveMode[key]=val; adaptiveMode.enabled=true;
+ localStorage.setItem("ftAdaptive",JSON.stringify(adaptiveMode));
+ renderHome();
+}
+function renderAdaptiveSummary(){
+ const c=document.getElementById("adaptiveControls");
+ const s=document.getElementById("adaptiveSummary");
+ if(c)c.classList.toggle("hidden",!adaptiveMode.enabled);
+ if(s)s.innerHTML=`<b>Configurazione:</b> ${adaptiveMode.location} · ${adaptiveMode.minutes} min · ${adaptiveMode.equipment}.`;
+ if(c){
+   c.querySelectorAll("button").forEach(b=>b.classList.remove("sel"));
+   [...c.querySelectorAll("button")].forEach(b=>{
+     const t=b.textContent;
+     if(t.includes(adaptiveMode.location)||t.includes(String(adaptiveMode.minutes))||
+       (adaptiveMode.equipment==="Nessuna"&&t.includes("corpo libero"))||
+       (adaptiveMode.equipment==="Zaino"&&t.includes("Zaino"))||
+       (adaptiveMode.equipment==="Elastico"&&t.includes("Elastico"))||
+       (adaptiveMode.equipment==="Completa"&&t.includes("attrezzi"))) b.classList.add("sel");
+   });
+ }
+}
+function adaptiveExercises(workout){
+ if(!adaptiveMode.enabled)return workout.ex.slice();
+ let ex=workout.ex.map(e=>e.slice());
+ if(adaptiveMode.equipment==="Nessuna"){
+   ex=ex.map(e=>e[0].includes("Rematore")
+     ?["Reverse snow angel",3,"10–15",60,"Schiena • postura","plank","Sdraiato a pancia in giù, muovi lentamente le braccia ad arco mantenendo le scapole attive.","Non sollevare troppo il collo."]
+     :e);
+ }
+ if(adaptiveMode.location==="Mare"){
+   ex=ex.map(e=>e[0].includes("Rematore")&&adaptiveMode.equipment==="Nessuna"
+     ?["Bear crawl",3,"20–30 sec",60,"Core • spalle","plank","Ginocchia poco sollevate, passi corti e controllati.","Non oscillare eccessivamente col bacino."]
+     :e);
+ }
+ const m=Number(adaptiveMode.minutes)||45;
+ const maxEx=m<=20?3:m<=30?4:m<=45?Math.min(5,ex.length):ex.length;
+ ex=ex.slice(0,maxEx);
+ if(m<=20)ex=ex.map(e=>{const c=e.slice();if(c[1]>3)c[1]=3;return c});
+ return ex;
+}
+function adaptiveWorkout(base){
+ return adaptiveMode.enabled
+   ? {...base,ex:adaptiveExercises(base),place:adaptiveMode.location,mins:adaptiveMode.minutes}
+   : {...base,ex:base.ex.map(e=>e.slice())};
+}
+
 function renderHome(){
  const D=id=>document.getElementById(id);
  D("dadBtn").classList.toggle("active",profile==="dad");
  D("girlBtn").classList.toggle("active",profile==="girl");
  D("welcome").textContent=profile==="dad"?"Bentornato! 👋":"Pronta ad allenarti? 👋";
  const s=stats();
- D("topStreak").textContent=s.streak; D("topSessions").textContent=s.sessions;
- D("sSessions").textContent=s.sessions; D("sTime").textContent=fmtTime(s.totalSec);
- D("sCalories").textContent=s.kcal; D("sStreak").textContent=s.streak;
- D("pct").textContent=s.pct+"%"; D("ring").style.setProperty("--pct",s.pct+"%");
- D("weekText").textContent=s.weekDone+"/3"; D("weekBar").style.width=(s.weekDone/3*100)+"%";
- D("workouts").innerHTML=Object.entries(plans[profile]).map(([k,w])=>`<div class="card workout"><img src="${w.img}"><div class="body"><div><div class="wtitle">${w.name}</div><div class="chips"><span class="chip">🏠 ${w.place}</span><span class="chip">⏱ ${w.mins} min</span></div><div class="desc">${w.desc}</div><div style="color:#c780ff;font-weight:800;margin-top:8px">${w.ex.length} esercizi</div></div><button class="primary" onclick="start('${k}')">INIZIA ALLENAMENTO ▶</button></div></div>`).join("");
+ D("topStreak").textContent=s.streak;D("topSessions").textContent=s.sessions;
+ D("sSessions").textContent=s.sessions;D("sTime").textContent=fmtTime(s.totalSec);
+ D("sCalories").textContent=s.kcal;D("sStreak").textContent=s.streak;
+ D("pct").textContent=s.pct+"%";D("ring").style.setProperty("--pct",s.pct+"%");
+ D("weekText").textContent=s.weekDone+"/3";D("weekBar").style.width=(s.weekDone/3*100)+"%";
+ D("workouts").innerHTML=Object.entries(plans[profile]).map(([k,base])=>{
+   const w=adaptiveWorkout(base);
+   return `<div class="card workout"><img src="${w.img}"><div class="body"><div><div class="wtitle">${w.name}</div><div class="chips"><span class="chip">${w.place==="Mare"?"🌊":"🏠"} ${w.place}</span><span class="chip">⏱ ${w.mins} min</span>${adaptiveMode.enabled?'<span class="chip">⚡ ADATTIVO</span>':""}</div><div class="desc">${w.desc}</div><div style="color:#c780ff;font-weight:800;margin-top:8px">${w.ex.length} esercizi</div></div><button class="primary" onclick="start('${k}')">INIZIA ALLENAMENTO ▶</button></div></div>`;
+ }).join("");
+ renderAdaptiveSummary();
 }
-function start(day){currentDay=day;exIndex=0;setDone=0;repsLog=[];sessionStarted=Date.now();activeSeconds=0;clearInterval(sessionTicker);sessionTicker=setInterval(()=>{activeSeconds++;sessionElapsed.textContent=new Date(activeSeconds*1000).toISOString().slice(14,19);if(activeSeconds%10===0)saveLiveDraft()},1000);show("session");renderExercise()}
+function start(day){
+ currentDay=day;
+ sessionWorkout=adaptiveWorkout(plans[profile][currentDay]);
+ exIndex=0;setDone=0;repsLog=[];sessionStarted=Date.now();activeSeconds=0;
+ clearInterval(sessionTicker);
+ sessionTicker=setInterval(()=>{activeSeconds++;sessionElapsed.textContent=new Date(activeSeconds*1000).toISOString().slice(14,19);if(activeSeconds%10===0)saveLiveDraft()},1000);
+ show("session");renderExercise()
+}
 function mediaBlock(type,name){return `<div class="video"><span class="badge">▶️ TUTORIAL VIDEO</span><video src="${media[type]}" autoplay muted loop playsinline controls preload="metadata"></video></div>`}
 
 function exerciseInfo(e){
@@ -382,7 +485,7 @@ function renderExercise(){
  <div class="rpeSelect" id="rpeSelect">
    <button onclick="pickRPE(1,this)">🙂</button><button onclick="pickRPE(2,this)">😊</button><button onclick="pickRPE(3,this)">😐</button><button onclick="pickRPE(4,this)">😓</button><button onclick="pickRPE(5,this)">🥵</button>
  </div></div>
- <button id="seriesActionBtn" class="green bigAction" style="margin-top:12px" onclick="completeSet()">${setDone>=e[1]?(exIndex<plans[profile][currentDay].ex.length-1?"PROSSIMO ESERCIZIO →":"TERMINA ALLENAMENTO ✓"):"✓ SERIE COMPLETATA"}</button>
+ <button id="seriesActionBtn" class="green bigAction" style="margin-top:12px" onclick="completeSet()">${setDone>=e[1]?(exIndex<(sessionWorkout||plans[profile][currentDay]).ex.length-1?"PROSSIMO ESERCIZIO →":"TERMINA ALLENAMENTO ✓"):"✓ SERIE COMPLETATA"}</button>
  </div>`;
  window.currentTip=e;
 }
@@ -540,7 +643,7 @@ function renderExerciseProgress(){
 }
 function ftDraftKey(){ return "ftDraft_"+profile; }
 function saveLiveDraft(){
- const w=plans[profile][currentDay];
+ const w=sessionWorkout||plans[profile][currentDay];
  const draft={
    profile:profile,
    day:currentDay,
@@ -573,7 +676,7 @@ function progressSessionsWithLive(){
 
 
 function advanceCompletedExercise(){
- const w=plans[profile][currentDay];
+ const w=sessionWorkout||plans[profile][currentDay];
  if(setDone < w.ex[exIndex][1]) return;
  if(exIndex < w.ex.length-1){
    exIndex++;
@@ -586,7 +689,7 @@ function advanceCompletedExercise(){
 }
 
 function completeSet(){
- const e=plans[profile][currentDay].ex[exIndex];
+ const e=(sessionWorkout||plans[profile][currentDay]).ex[exIndex];
 
  // If all sets are already complete, this button acts as "next exercise".
  if(setDone>=e[1]){
@@ -624,7 +727,7 @@ function completeSet(){
  }
  const actionBtn=document.getElementById("seriesActionBtn");
  if(actionBtn && setDone>=e[1]){
-   actionBtn.textContent=exIndex<plans[profile][currentDay].ex.length-1?"PROSSIMO ESERCIZIO →":"TERMINA ALLENAMENTO ✓";
+   actionBtn.textContent=exIndex<(sessionWorkout||plans[profile][currentDay]).ex.length-1?"PROSSIMO ESERCIZIO →":"TERMINA ALLENAMENTO ✓";
  }
 
  if(setDone<e[1]){
@@ -632,8 +735,8 @@ function completeSet(){
  }else{
    showRest(
      Math.min(e[3],60),
-     exIndex<plans[profile][currentDay].ex.length-1
-       ? `Prossimo: ${plans[profile][currentDay].ex[exIndex+1][0]}`
+     exIndex<(sessionWorkout||plans[profile][currentDay]).ex.length-1
+       ? `Prossimo: ${(sessionWorkout||plans[profile][currentDay]).ex[exIndex+1][0]}`
        : "Allenamento quasi completato"
    );
  }
@@ -647,7 +750,7 @@ function finishRest(){
  clearInterval(timerInt);document.getElementById("restOverlay")?.remove();
  let e=plans[profile][currentDay].ex[exIndex];
  if(setDone>=e[1]){
-   if(exIndex<plans[profile][currentDay].ex.length-1){exIndex++;setDone=0;renderExercise()}
+   if(exIndex<(sessionWorkout||plans[profile][currentDay]).ex.length-1){exIndex++;setDone=0;renderExercise()}
    else finishSession();
  }else renderExercise();
 }
@@ -682,7 +785,7 @@ function exitSession(){
 function show(id){["home","session","nutrition","progressPage","safety"].forEach(x=>document.getElementById(x).classList.toggle("hidden",x!==id));if(id==="progressPage"){progressTab="overview";renderProgress();}if(id==="home")renderHome()}
 function renderHistory(){let ss=profileSessions().slice().reverse();history.innerHTML=ss.length?ss.map(s=>`<div class="card pad"><b>Allenamento ${s.day}</b><div class="sub">${new Date(s.ts).toLocaleString("it-IT")}</div><div class="chips"><span class="chip">⏱ ${fmtTime(s.durationSec)}</span><span class="chip">🔥 ${s.kcal} kcal stimate</span></div></div>`).join(""):'<p class="note">Ancora nessun allenamento registrato.</p>'}
 function openStats(){let s=stats();sheet.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center"><h2>Statistiche live</h2><button onclick="modal.classList.add('hidden')">✕</button></div><div class="statline"><div class="stat"><b>${s.sessions}</b><small>Allenamenti</small></div><div class="stat"><b>${fmtTime(s.totalSec)}</b><small>Tempo totale</small></div><div class="stat"><b>${s.kcal}</b><small>kcal stimate</small></div><div class="stat"><b>${s.streak}</b><small>Streak</small></div></div><div class="card pad"><b>Settimana</b><p>${s.weekDone}/3 allenamenti completati</p></div>`;modal.classList.remove("hidden")}
-function openSettings(){sheet.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center"><h2>Impostazioni</h2><button onclick="modal.classList.add('hidden')">✕</button></div><div class="card pad"><button style="width:100%" onclick="if(confirm('Azzero tutti i dati salvati?')){localStorage.removeItem('ftData');modal.classList.add('hidden');renderHome()}">Azzera tutti i dati</button></div><div class="card pad"><p class="note">I dati vengono salvati localmente su questo dispositivo/browser.</p><p class="note"><b>Versione: V9.4 Exercise Detail Fix</b></p></div>`;modal.classList.remove("hidden")}
+function openSettings(){sheet.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center"><h2>Impostazioni</h2><button onclick="modal.classList.add('hidden')">✕</button></div><div class="card pad"><button style="width:100%" onclick="if(confirm('Azzero tutti i dati salvati?')){localStorage.removeItem('ftData');modal.classList.add('hidden');renderHome()}">Azzera tutti i dati</button></div><div class="card pad"><p class="note">I dati vengono salvati localmente su questo dispositivo/browser.</p><p class="note"><b>Versione: V10 Adaptive Casa/Mare</b></p></div>`;modal.classList.remove("hidden")}
 function closeModal(e){if(e.target===modal)modal.classList.add("hidden")}
 renderHome();
 </script>
