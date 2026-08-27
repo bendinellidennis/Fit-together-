@@ -1,0 +1,11 @@
+{
+  "name": "FIT TOGETHER",
+  "short_name": "FIT TOGETHER",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#070b12",
+  "theme_color": "#070b12",
+  "description": "Allenamento, progressi, nutrizione e recupero per casa e mare.",
+  "orientation": "portrait"
+}

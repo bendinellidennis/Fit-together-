@@ -177,7 +177,16 @@ main{max-width:720px;padding:14px 14px 108px}
 .suppBox{background:linear-gradient(145deg,#10182a,#18142b);border:1px solid #6146aa;border-radius:16px;padding:13px;margin-top:10px}
 .foodTag{display:inline-block;background:#172536;border-radius:999px;padding:6px 9px;margin:3px;font-size:11px}
 
-</style></head>
+
+/* V14 OFFLINE PWA */
+.offlineBadge{display:inline-flex;align-items:center;gap:6px;background:#0d1723;border:1px solid #2a3a50;border-radius:999px;padding:6px 9px;font-size:10px;color:#b9c5d4}
+.offlineBadge.ready{border-color:#2f8e55;color:#baffd0}.offlineBadge.off{border-color:#8f5a35;color:#ffd0a7}
+.offlineBox{background:linear-gradient(145deg,#0e1724,#15182b);border:1px solid #4d4f8a;border-radius:16px;padding:13px;margin-top:10px}
+</style><link rel="manifest" href="manifest.webmanifest">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="FIT TOGETHER">
+</head>
 <body>
 <main>
 <div class="topbar">
@@ -185,7 +194,7 @@ main{max-width:720px;padding:14px 14px 108px}
   <div class="icons">
     <button class="mini" onclick="openStats()">🔥 <span id="topStreak">0</span><small style="display:block;font-size:8px;color:#9ca9bb">STREAK</small></button>
     <button class="mini" onclick="openStats()">📅 <span id="topSessions">0</span><small style="display:block;font-size:8px;color:#9ca9bb">ALLEN.</small></button>
-    <button class="mini" onclick="openSettings()">⚙️</button>
+    <button class="mini" onclick="openSettings()">⚙️</button><span id="offlineStatus" class="offlineBadge">☁️ ONLINE</span>
   </div>
 </div>
 
@@ -482,7 +491,32 @@ function adaptiveWorkout(base){
    : {...base,ex:base.ex.map(e=>e.slice())};
 }
 
+
+function updateOfflineStatus(){
+ const el=document.getElementById("offlineStatus");if(!el)return;
+ if(!navigator.onLine){el.textContent="📴 OFFLINE";el.classList.add("off");el.classList.remove("ready")}
+ else if(localStorage.getItem("ftOfflineReady")==="1"){el.textContent="✅ OFFLINE PRONTO";el.classList.add("ready");el.classList.remove("off")}
+ else{el.textContent="☁️ ONLINE";el.classList.remove("ready","off")}
+}
+async function prepareOffline(){
+ try{
+   if("serviceWorker" in navigator){
+     const reg=await navigator.serviceWorker.ready;
+     if(reg.active)reg.active.postMessage({type:"PRECACHE_APP"});
+     localStorage.setItem("ftOfflineReady","1");
+     const s=document.getElementById("offlineSettingsState");if(s)s.textContent="✅ App offline pronta";
+     updateOfflineStatus();
+   }else alert("Il browser non supporta il salvataggio offline completo.");
+ }catch(e){alert("Preparazione offline non completata. Riprova con connessione attiva.")}
+}
+if("serviceWorker" in navigator){
+ window.addEventListener("load",()=>{navigator.serviceWorker.register("./sw.js").then(()=>navigator.serviceWorker.ready).then(()=>{localStorage.setItem("ftOfflineReady","1");updateOfflineStatus()}).catch(()=>updateOfflineStatus())});
+}
+window.addEventListener("online",updateOfflineStatus);
+window.addEventListener("offline",updateOfflineStatus);
+
 function renderHome(){
+ updateOfflineStatus();
  const D=id=>document.getElementById(id);
  D("dadBtn").classList.toggle("active",profile==="dad");
  D("girlBtn").classList.toggle("active",profile==="girl");
@@ -1090,7 +1124,15 @@ function renderNutrition(){
 function show(id){["home","session","together","nutrition","progressPage","safety"].forEach(x=>document.getElementById(x).classList.toggle("hidden",x!==id));if(id==="progressPage"){progressTab="overview";renderProgress();if(id==="nutrition"){nutriTab="today";renderNutrition();}}if(id==="home")renderHome()}
 function renderHistory(){let ss=profileSessions().slice().reverse();history.innerHTML=ss.length?ss.map(s=>`<div class="card pad"><b>Allenamento ${s.day}</b><div class="sub">${new Date(s.ts).toLocaleString("it-IT")}</div><div class="chips"><span class="chip">⏱ ${fmtTime(s.durationSec)}</span><span class="chip">🔥 ${s.kcal} kcal stimate</span></div></div>`).join(""):'<p class="note">Ancora nessun allenamento registrato.</p>'}
 function openStats(){let s=stats();sheet.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center"><h2>Statistiche live</h2><button onclick="modal.classList.add('hidden')">✕</button></div><div class="statline"><div class="stat"><b>${s.sessions}</b><small>Allenamenti</small></div><div class="stat"><b>${fmtTime(s.totalSec)}</b><small>Tempo totale</small></div><div class="stat"><b>${s.kcal}</b><small>kcal stimate</small></div><div class="stat"><b>${s.streak}</b><small>Streak</small></div></div><div class="card pad"><b>Settimana</b><p>${s.weekDone}/3 allenamenti completati</p></div>`;modal.classList.remove("hidden")}
-function openSettings(){sheet.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center"><h2>Impostazioni</h2><button onclick="modal.classList.add('hidden')">✕</button></div><div class="card pad"><button style="width:100%" onclick="if(confirm('Azzero tutti i dati salvati?')){localStorage.removeItem('ftData');modal.classList.add('hidden');renderHome()}">Azzera tutti i dati</button></div><div class="card pad"><p class="note">I dati vengono salvati localmente su questo dispositivo/browser.</p><p class="note"><b>Versione: V13 Nutrizione & Recupero</b></p></div>`;modal.classList.remove("hidden")}
+function openSettings(){
+ const cacheState=localStorage.getItem("ftOfflineReady")==="1";
+ sheet.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center"><h2>Impostazioni</h2><button onclick="modal.classList.add('hidden')">✕</button></div>
+ <div class="offlineBox"><h3>📴 Modalità Offline</h3><p class="note">L'app viene salvata sul dispositivo. I tutorial video che hai già aperto vengono memorizzati progressivamente per poterli rivedere anche senza rete.</p><div class="row" style="display:flex;justify-content:space-between;align-items:center"><span id="offlineSettingsState">${cacheState?"✅ App offline pronta":"⏳ Preparazione offline"}</span><button class="primary" onclick="prepareOffline()">PREPARA OFFLINE</button></div></div>
+ <div class="card pad"><button style="width:100%" onclick="if(confirm('Azzero tutti i dati salvati?')){localStorage.removeItem('ftData');modal.classList.add('hidden');renderHome()}">Azzera tutti i dati</button></div>
+ <div class="card pad"><p class="note">I dati vengono salvati localmente su questo dispositivo/browser.</p><p class="note"><b>Versione: V14 Offline PWA</b></p></div>`;
+ modal.classList.remove("hidden")
+}
+
 function closeModal(e){if(e.target===modal)modal.classList.add("hidden")}
 renderHome();
 </script>
