@@ -315,6 +315,16 @@ main{max-width:720px;padding:14px 14px 108px}
  .guideRow .voiceBadge.on::before{content:"🔊";font-size:18px}
 }
 
+
+/* V23 SCHEDULED SESSIONS */
+.scheduleBox{background:linear-gradient(145deg,#101827,#19142c);border:1px solid #5d47a7;border-radius:18px;padding:14px;margin:12px 0}
+.scheduleItem{background:#0d1723;border:1px solid #28384e;border-radius:14px;padding:11px;margin:8px 0}
+.scheduleTop{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.scheduleMeta{font-size:11px;color:#9eabba;margin-top:4px}
+.scheduleNext{font-size:20px;font-weight:950;line-height:1.2}
+.scheduleGrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+.scheduleBadge{display:inline-block;background:#3d3269;border-radius:999px;padding:4px 7px;font-size:10px;font-weight:900}
+
 </style><link rel="manifest" href="manifest.webmanifest">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -370,6 +380,15 @@ main{max-width:720px;padding:14px 14px 108px}
   </div>
   <div id="plannerHome"></div>
 </div>
+
+<div class="scheduleBox">
+  <div class="row" style="display:flex;justify-content:space-between;align-items:center">
+    <div><b>📅 Sessioni programmate</b><div class="sub">Pianifica quando allenarti e ritrova qui il prossimo appuntamento.</div></div>
+    <button onclick="openScheduleManager()">GESTISCI</button>
+  </div>
+  <div id="scheduleHome"></div>
+</div>
+
 
 <div class="readyBox">
   <div class="row" style="display:flex;justify-content:space-between;align-items:center">
@@ -751,7 +770,9 @@ function fitStorageKeys(){
       k.startsWith("ftNutrition_") ||
       k.startsWith("ftPlanner_") ||
       k.startsWith("ftFavorites_") ||
-      k.startsWith("ftCustomWorkouts_")
+      k.startsWith("ftCustomWorkouts_") ||
+      k.startsWith("ftSchedule_") ||
+      k.startsWith("ftScheduleAlert_")
    )) keys.push(k);
  }
  return [...new Set(keys)].sort();
@@ -1185,6 +1206,78 @@ function renderVoiceHome(){
  updateVoiceButtons();
 }
 
+
+function scheduleKey(){return "ftSchedule_"+profile}
+function scheduleDb(){
+ try{return JSON.parse(localStorage.getItem(scheduleKey())||"[]")}catch(e){return []}
+}
+function saveScheduleDb(arr){localStorage.setItem(scheduleKey(),JSON.stringify(arr))}
+function futureSchedules(){
+ const now=Date.now();
+ return scheduleDb().filter(x=>Number(x.ts)>now).sort((a,b)=>a.ts-b.ts);
+}
+function nextSchedule(){return futureSchedules()[0]||null}
+function renderScheduleHome(){
+ const box=document.getElementById("scheduleHome");if(!box)return;
+ const n=nextSchedule();
+ if(!n){
+   box.innerHTML=`<div class="scheduleItem"><div class="sub">Nessuna sessione futura programmata.</div><button class="primary" style="width:100%;margin-top:8px" onclick="openScheduleManager()">PROGRAMMA ORA</button></div>`;
+   return;
+ }
+ const dt=new Date(n.ts);
+ const w=plans[profile][n.day]||null;
+ box.innerHTML=`<div class="scheduleItem"><span class="scheduleBadge">PROSSIMO</span><div class="scheduleNext">${n.day} · ${w?w.name:n.name||"Allenamento"}</div><div class="scheduleMeta">${dt.toLocaleDateString("it-IT",{weekday:"long",day:"2-digit",month:"2-digit"})} · ${dt.toLocaleTimeString("it-IT",{hour:"2-digit",minute:"2-digit"})}</div><button class="primary" style="width:100%;margin-top:9px" onclick="start('${n.day}')">INIZIA ORA ▶</button></div>`;
+}
+function openScheduleManager(){
+ const arr=scheduleDb().slice().sort((a,b)=>a.ts-b.ts);
+ const workoutOptions=Object.entries(plans[profile]).map(([k,w])=>`<option value="${k}">${k} · ${w.name}</option>`).join("");
+ sheet.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center"><h2>📅 Sessioni programmate</h2><button onclick="modal.classList.add('hidden')">✕</button></div>
+ <div class="card pad"><h3>Nuova sessione</h3>
+  <label class="sub">Allenamento</label><select id="scheduleDay" class="input">${workoutOptions}</select>
+  <div class="scheduleGrid">
+   <label class="sub">Data<input id="scheduleDate" type="date" class="input"></label>
+   <label class="sub">Ora<input id="scheduleTime" type="time" class="input"></label>
+  </div>
+  <button class="green" style="width:100%;margin-top:10px" onclick="saveScheduledSession()">SALVA SESSIONE</button>
+ </div>
+ <div class="card pad"><h3>Programmate</h3>${arr.length?arr.map(x=>{
+   const dt=new Date(x.ts),w=plans[profile][x.day];
+   return `<div class="scheduleItem"><div class="scheduleTop"><div><b>${x.day} · ${w?w.name:"Allenamento"}</b><div class="scheduleMeta">${dt.toLocaleDateString("it-IT")} · ${dt.toLocaleTimeString("it-IT",{hour:"2-digit",minute:"2-digit"})}</div></div><button onclick="deleteScheduledSession('${x.id}')">ELIMINA</button></div></div>`;
+ }).join(""):'<p class="note">Nessuna sessione programmata.</p>'}</div>
+ <div class="card pad"><p class="note">I promemoria sono mostrati nell'app quando la apri. Safari non permette a questa pagina GitHub di creare notifiche locali affidabili in background su iPhone senza un servizio push esterno.</p></div>`;
+ modal.classList.remove("hidden");
+ // default tomorrow at 18:00
+ const d=new Date();d.setDate(d.getDate()+1);
+ const dateEl=document.getElementById("scheduleDate"),timeEl=document.getElementById("scheduleTime");
+ if(dateEl&&!dateEl.value)dateEl.value=d.toISOString().slice(0,10);
+ if(timeEl&&!timeEl.value)timeEl.value="18:00";
+}
+function saveScheduledSession(){
+ const day=document.getElementById("scheduleDay")?.value;
+ const date=document.getElementById("scheduleDate")?.value;
+ const time=document.getElementById("scheduleTime")?.value;
+ if(!day||!date||!time){alert("Seleziona allenamento, data e ora.");return}
+ const ts=new Date(`${date}T${time}:00`).getTime();
+ if(!Number.isFinite(ts)||ts<=Date.now()){alert("Scegli una data e un'ora future.");return}
+ const arr=scheduleDb();
+ arr.push({id:"S"+Date.now(),day,ts,createdAt:Date.now()});
+ saveScheduleDb(arr);renderScheduleHome();openScheduleManager();
+}
+function deleteScheduledSession(id){
+ saveScheduleDb(scheduleDb().filter(x=>x.id!==id));
+ renderScheduleHome();openScheduleManager();
+}
+function checkDueSchedule(){
+ const now=Date.now(),arr=scheduleDb(),lastKey="ftScheduleAlert_"+profile;
+ const last=localStorage.getItem(lastKey)||"";
+ const due=arr.filter(x=>x.ts<=now && now-x.ts<=3*3600000).sort((a,b)=>b.ts-a.ts)[0];
+ if(due && last!==due.id){
+   const w=plans[profile][due.day];
+   localStorage.setItem(lastKey,due.id);
+   setTimeout(()=>alert(`È il momento dell'allenamento ${due.day}${w?" · "+w.name:""}!`),400);
+ }
+}
+
 function renderHome(){
  updateOfflineStatus();
  setTimeout(renderPlannerHome,0);
@@ -1192,6 +1285,8 @@ function renderHome(){
  setTimeout(renderFavoriteQuick,0);
  setTimeout(renderCustomQuick,0);
  setTimeout(renderVoiceHome,0);
+ setTimeout(renderScheduleHome,0);
+ setTimeout(checkDueSchedule,0);
  const D=id=>document.getElementById(id);
  D("dadBtn").classList.toggle("active",profile==="dad");
  D("girlBtn").classList.toggle("active",profile==="girl");
@@ -2066,7 +2161,7 @@ function openSettings(){
  <div class="card pad">
   <button style="width:100%" onclick="if(confirm('Azzero tutti i dati salvati?')){clearAllFitData();modal.classList.add('hidden');renderHome()}">Azzera tutti i dati</button>
  </div>
- <div class="card pad"><p class="note">I dati vengono salvati localmente su questo dispositivo/browser.</p><p class="note"><b>Versione: V22.1 Voice Visibility Fix</b></p></div>`;
+ <div class="card pad"><p class="note">I dati vengono salvati localmente su questo dispositivo/browser.</p><p class="note"><b>Versione: V23 Sessioni Programmate</b></p></div>`;
  modal.classList.remove("hidden")
 }
 
