@@ -333,6 +333,14 @@ main{max-width:720px;padding:14px 14px 108px}
 .swapOption b{display:block}.swapOption .sub{font-size:10px;margin-top:3px}
 .swapReason{font-size:11px;color:#aab6c6;line-height:1.4;margin-top:5px}
 
+
+/* V25 SMART REST COACH */
+.restCoach{background:linear-gradient(145deg,#101827,#19142c);border:1px solid #5d47a7;border-radius:16px;padding:12px;margin:10px 0}
+.restCoachTitle{font-size:16px;font-weight:900}
+.restCoachMeta{font-size:11px;color:#aab6c6;line-height:1.4;margin-top:5px}
+.restAdjust{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.restPill{display:inline-block;background:#342a59;border-radius:999px;padding:5px 8px;font-size:10px;font-weight:900}
+
 </style><link rel="manifest" href="manifest.webmanifest">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -644,9 +652,37 @@ function completeTogetherSet(){
  const st=togetherState,who=st.turn,e=tcEx(who);if(!e)return;
  const reps=document.getElementById("togetherReps")?.value.trim()||"",note=document.getElementById("togetherNote")?.value.trim()||"",rpe=st.currentRPE||0;
  if(who==="dad"){st.dadSet++;st.dadLogs.push({exercise:e[0],set:st.dadSet,reps,note,rpe,savedAt:Date.now()})}else{st.girlSet++;st.girlLogs.push({exercise:e[0],set:st.girlSet,reps,note,rpe,savedAt:Date.now()})}
- saveTogetherDraft();showTogetherRest(Math.min(e[3],75));
+ saveTogetherDraft();showTogetherRest(Math.min(150,smartRestSeconds(e,rpe)),e,rpe);
 }
-function showTogetherRest(sec){speakRest(sec,"Poi cambia il turno.");let w=document.createElement("div");w.className="restOverlay";w.id="togetherRest";w.innerHTML=`<div class="restCard"><div class="sub">RECUPERO CONDIVISO</div><div class="restClock" id="togetherRestClock">${formatClock(sec)}</div><button class="primary bigAction" onclick="finishTogetherRest()">SALTA RECUPERO ›</button></div>`;document.body.appendChild(w);togetherState.rest=sec;clearInterval(timerInt);timerInt=setInterval(()=>{togetherState.rest--;const c=document.getElementById("togetherRestClock");if(c)c.textContent=formatClock(Math.max(0,togetherState.rest));if(togetherState.rest<=0){clearInterval(timerInt);navigator.vibrate?.([150,80,150]);finishTogetherRest()}},1000)}
+function showTogetherRest(sec,e,rpe){
+ speakRest(sec,"Poi cambia il turno.");
+ let w=document.createElement("div");
+ w.className="restOverlay";w.id="togetherRest";
+ w.innerHTML=`<div class="restCard">
+  <div class="sub">RECUPERO CONDIVISO</div>
+  <div class="restClock" id="togetherRestClock">${formatClock(sec)}</div>
+  <div class="restCoach"><div class="restCoachTitle">🧠 Smart Rest</div><div class="restCoachMeta">${smartRestReason(e,rpe,sec)}</div><div class="restAdjust"><button onclick="adjustTogetherRest(-15)">−15 sec</button><button onclick="adjustTogetherRest(15)">+15 sec</button></div></div>
+  <button class="primary bigAction" onclick="finishTogetherRest()">SALTA RECUPERO ›</button>
+ </div>`;
+ document.body.appendChild(w);
+ togetherState.rest=sec;
+ clearInterval(timerInt);
+ timerInt=setInterval(()=>{
+   togetherState.rest--;
+   const c=document.getElementById("togetherRestClock");
+   if(c)c.textContent=formatClock(Math.max(0,togetherState.rest));
+   if(togetherState.rest<=0){
+     clearInterval(timerInt);navigator.vibrate?.([150,80,150]);finishTogetherRest()
+   }
+ },1000)
+}
+function adjustTogetherRest(delta){
+ if(!togetherState)return;
+ togetherState.rest=Math.max(0,Math.min(180,(Number(togetherState.rest)||0)+delta));
+ const c=document.getElementById("togetherRestClock");
+ if(c)c.textContent=formatClock(togetherState.rest);
+}
+
 function finishTogetherRest(){clearInterval(timerInt);document.getElementById("togetherRest")?.remove();switchTogether()}
 function switchTogether(){
  const st=togetherState,d=tcEx("dad"),g=tcEx("girl"),dd=!d||st.dadSet>=d[1],gd=!g||st.girlSet>=g[1];
@@ -790,6 +826,7 @@ function fitStorageKeys(){
       k==="ftLastBackup" ||
       k==="ftGuidedPhases" ||
       k==="ftVoiceCoach" ||
+      k==="ftSmartRest" ||
       k.startsWith("ftDraft_") ||
       k.startsWith("ftBody_") ||
       k.startsWith("ftNutrition_") ||
@@ -1965,6 +2002,89 @@ function advanceCompletedExercise(){
  }
 }
 
+
+function smartRestSeconds(e,rpe){
+ const base=Number(e?.[3]||60);
+ if(localStorage.getItem("ftSmartRest")==="0")return base;
+ let sec=base;
+ const tags=exerciseTags(e||[]);
+ const ready=readinessData?readinessData():{intensity:"NORMALE"};
+
+ // Exercise type
+ if(tags.includes("legs")||tags.includes("back"))sec+=10;
+ if(tags.includes("core"))sec-=5;
+ if(tags.includes("cardio"))sec+=5;
+
+ // Perceived effort from current set
+ const rv=Number(rpe||0);
+ if(rv>=5)sec+=25;
+ else if(rv===4)sec+=15;
+ else if(rv===3)sec+=5;
+ else if(rv===1)sec-=10;
+
+ // Readiness
+ if(ready.intensity==="RIDOTTA")sec+=15;
+ if(ready.intensity==="RECUPERO")sec+=20;
+
+ // Teen profile: no aggressive shortening
+ if(profile==="girl")sec=Math.max(sec,50);
+
+ return Math.max(30,Math.min(150,Math.round(sec/5)*5));
+}
+function smartRestReason(e,rpe,sec){
+ const reasons=[];
+ const base=Number(e?.[3]||60);
+ if(Number(rpe)>=4)reasons.push("RPE alto");
+ if(Number(rpe)===1)reasons.push("serie leggera");
+ const tags=exerciseTags(e||[]);
+ if(tags.includes("legs")||tags.includes("back"))reasons.push("gruppo muscolare impegnativo");
+ const rd=readinessData?readinessData():null;
+ if(rd&&rd.intensity==="RIDOTTA")reasons.push("Readiness ridotta");
+ if(profile==="girl")reasons.push("profilo più conservativo");
+ if(!reasons.length)reasons.push("recupero standard");
+ return `${sec}s consigliati · ${reasons.join(" · ")}`;
+}
+function openRestCoach(sec,e,rpe,nextLabel){
+ const reason=smartRestReason(e,rpe,sec);
+ let wrap=document.createElement("div");
+ wrap.className="restOverlay";
+ wrap.id="restOverlay";
+ wrap.innerHTML=`<div class="restCard">
+   <div class="sub">RECUPERO INTELLIGENTE</div>
+   <div class="restClock" id="restClock">${formatClock(sec)}</div>
+   <div class="restCoach">
+     <div class="restCoachTitle">🧠 Smart Rest</div>
+     <div class="restCoachMeta">${reason}</div>
+     <div class="restAdjust">
+       <button onclick="adjustSmartRest(-15)">−15 sec</button>
+       <button onclick="adjustSmartRest(15)">+15 sec</button>
+     </div>
+   </div>
+   <div class="restNext">${nextLabel||""}</div>
+   <button class="primary bigAction" style="margin-top:18px" onclick="finishRest()">SALTA RECUPERO ›</button>
+ </div>`;
+ document.body.appendChild(wrap);
+ window.restLeft=sec;
+ window.restTotal=sec;
+ clearInterval(timerInt);
+ speakRest(sec,nextLabel);
+ timerInt=setInterval(()=>{
+   window.restLeft--;
+   const c=document.getElementById("restClock");
+   if(c)c.textContent=formatClock(Math.max(0,window.restLeft));
+   if(window.restLeft<=0){
+     clearInterval(timerInt);
+     navigator.vibrate?.([150,80,150]);
+     finishRest();
+   }
+ },1000);
+}
+function adjustSmartRest(delta){
+ window.restLeft=Math.max(0,Math.min(180,(Number(window.restLeft)||0)+delta));
+ const c=document.getElementById("restClock");
+ if(c)c.textContent=formatClock(window.restLeft);
+}
+
 function completeSet(){
  const e=(sessionWorkout||plans[profile][currentDay]).ex[exIndex];
 
@@ -2007,11 +2127,14 @@ function completeSet(){
    actionBtn.textContent=exIndex<(sessionWorkout||plans[profile][currentDay]).ex.length-1?"PROSSIMO ESERCIZIO →":"TERMINA ALLENAMENTO ✓";
  }
 
+ const restSec=smartRestSeconds(e,selectedRPE||0);
  if(setDone<e[1]){
-   showRest(e[3],`Serie ${setDone+1} di ${e[1]} • ${e[0]}`);
+   openRestCoach(restSec,e,selectedRPE||0,`Serie ${setDone+1} di ${e[1]} • ${e[0]}`);
  }else{
-   showRest(
-     Math.min(e[3],60),
+   openRestCoach(
+     Math.min(150,restSec),
+     e,
+     selectedRPE||0,
      exIndex<(sessionWorkout||plans[profile][currentDay]).ex.length-1
        ? `Prossimo: ${(sessionWorkout||plans[profile][currentDay]).ex[exIndex+1][0]}`
        : "Allenamento quasi completato"
@@ -2214,10 +2337,17 @@ function speakPhaseStep(step,type){
  speakCoach(`${type==="warmup"?"Riscaldamento":"Defaticamento"}. ${step.name}. ${step.tip||""}`);
 }
 
+
+function toggleSmartRest(){
+ const off=localStorage.getItem("ftSmartRest")==="0";
+ localStorage.setItem("ftSmartRest",off?"1":"0");
+ openSettings();
+}
 function openSettings(){
  const cacheState=localStorage.getItem("ftOfflineReady")==="1";
  const lastBackup=localStorage.getItem("ftLastBackup")||"";
  sheet.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center"><h2>Impostazioni</h2><button onclick="modal.classList.add('hidden')">✕</button></div>
+ <div class="card pad"><div class="row" style="display:flex;justify-content:space-between;align-items:center"><div><b>🧠 Smart Rest</b><div class="sub">Recuperi adattati a esercizio, RPE e Readiness.</div></div><button onclick="toggleSmartRest()">${localStorage.getItem("ftSmartRest")==="0"?"OFF":"ON"}</button></div></div>
  <div class="voiceBox">
   <h3>🔊 Coach vocale</h3>
   <p class="note">Legge ad alta voce esercizio, serie, tecnica, recuperi e cambi turno usando la voce integrata dell'iPhone. Nessun abbonamento esterno.</p>
@@ -2257,7 +2387,7 @@ function openSettings(){
  <div class="card pad">
   <button style="width:100%" onclick="if(confirm('Azzero tutti i dati salvati?')){clearAllFitData();modal.classList.add('hidden');renderHome()}">Azzera tutti i dati</button>
  </div>
- <div class="card pad"><p class="note">I dati vengono salvati localmente su questo dispositivo/browser.</p><p class="note"><b>Versione: V24 Smart Exercise Swap</b></p></div>`;
+ <div class="card pad"><p class="note">I dati vengono salvati localmente su questo dispositivo/browser.</p><p class="note"><b>Versione: V25 Smart Rest Coach</b></p></div>`;
  modal.classList.remove("hidden")
 }
 
