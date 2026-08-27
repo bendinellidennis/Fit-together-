@@ -280,7 +280,7 @@ function renderHome(){
  D("weekText").textContent=s.weekDone+"/3"; D("weekBar").style.width=(s.weekDone/3*100)+"%";
  D("workouts").innerHTML=Object.entries(plans[profile]).map(([k,w])=>`<div class="card workout"><img src="${w.img}"><div class="body"><div><div class="wtitle">${w.name}</div><div class="chips"><span class="chip">🏠 ${w.place}</span><span class="chip">⏱ ${w.mins} min</span></div><div class="desc">${w.desc}</div><div style="color:#c780ff;font-weight:800;margin-top:8px">${w.ex.length} esercizi</div></div><button class="primary" onclick="start('${k}')">INIZIA ALLENAMENTO ▶</button></div></div>`).join("");
 }
-function start(day){currentDay=day;exIndex=0;setDone=0;repsLog=[];sessionStarted=Date.now();activeSeconds=0;clearInterval(sessionTicker);sessionTicker=setInterval(()=>{activeSeconds++;sessionElapsed.textContent=new Date(activeSeconds*1000).toISOString().slice(14,19)},1000);show("session");renderExercise()}
+function start(day){currentDay=day;exIndex=0;setDone=0;repsLog=[];sessionStarted=Date.now();activeSeconds=0;clearInterval(sessionTicker);sessionTicker=setInterval(()=>{activeSeconds++;sessionElapsed.textContent=new Date(activeSeconds*1000).toISOString().slice(14,19);if(activeSeconds%10===0)saveLiveDraft()},1000);show("session");renderExercise()}
 function mediaBlock(type,name){return `<div class="video"><span class="badge">▶️ TUTORIAL VIDEO</span><video src="${media[type]}" autoplay muted loop playsinline controls preload="metadata"></video></div>`}
 
 function exerciseInfo(e){
@@ -402,7 +402,7 @@ function pickRPE(v,el){
 
 function allExerciseLogs(){
  const out=[];
- profileSessions().forEach(s=>{
+ progressSessionsWithLive().forEach(s=>{
    (s.logs||[]).forEach(l=>out.push({...l,ts:s.ts,day:s.day,durationSec:s.durationSec||0,kcal:s.kcal||0}));
  });
  return out;
@@ -457,7 +457,8 @@ function renderProgressOverview(){
  const box=document.getElementById("progressContent"); if(!box)return;
  const s=stats(), w=weeklyStats(), names=exerciseNames();
  let best=names.map(exerciseStats).sort((a,b)=>b.improvement-a.improvement).slice(0,5);
- box.innerHTML=`<div class="summaryGrid">
+ const live=loadLiveDraft();
+ box.innerHTML=`${live&&live.logs&&live.logs.length?`<div class="card pad live"><b>🟢 Allenamento in corso</b><p class="note">${live.logs.length} serie già salvate in tempo reale.</p></div>`:""}<div class="summaryGrid">
  <div class="summaryCard"><b>${s.sessions}</b><small>Allenamenti totali</small></div>
  <div class="summaryCard"><b>${fmtTime(s.totalSec)}</b><small>Tempo totale</small></div>
  <div class="summaryCard"><b>${s.kcal}</b><small>kcal stimate</small></div>
@@ -476,14 +477,14 @@ function renderProgressOverview(){
 }
 function renderDiary(){
  const box=document.getElementById("progressContent"); if(!box)return;
- const ss=profileSessions().slice().sort((a,b)=>b.ts-a.ts);
+ const ss=progressSessionsWithLive().slice().sort((a,b)=>(b.updatedAt||b.ts)-(a.updatedAt||a.ts));
  box.innerHTML=ss.length?ss.map((s,si)=>{
    const groups={};(s.logs||[]).forEach(l=>(groups[l.exercise]??=[]).push(l));
    const exercises=Object.entries(groups).map(([name,logs])=>`<div class="exerciseRow"><b>${name}</b>
      <table class="setTable"><thead><tr><th>Serie</th><th>Rep</th><th>RPE</th><th>Note</th></tr></thead><tbody>
      ${logs.map(l=>`<tr><td>${l.set||"-"}</td><td>${l.reps||"-"}</td><td>${l.rpe?["","🙂","😊","😐","😓","🥵"][l.rpe]:"-"}</td><td>${l.note||"-"}</td></tr>`).join("")}
      </tbody></table></div>`).join("");
-   return `<div class="diaryItem"><div class="diaryTop"><div><b>Allenamento ${s.day}</b><div class="diaryMeta">${new Date(s.ts).toLocaleString("it-IT")}</div></div><div><span class="chip">⏱ ${fmtTime(s.durationSec||0)}</span><span class="chip">🔥 ${Math.round(s.kcal||0)}</span></div></div>${exercises||'<p class="note">Nessuna serie registrata.</p>'}</div>`;
+   return `<div class="diaryItem"><div class="diaryTop"><div><b>Allenamento ${s.day} ${s.isLive?'<span class="badgePR">IN CORSO</span>':""}</b><div class="diaryMeta">${new Date(s.ts).toLocaleString("it-IT")}</div></div><div><span class="chip">⏱ ${fmtTime(s.durationSec||0)}</span><span class="chip">🔥 ${Math.round(s.kcal||0)}</span></div></div>${exercises||'<p class="note">Nessuna serie registrata.</p>'}</div>`;
  }).join(""):'<p class="note">Ancora nessun allenamento nel diario.</p>';
 }
 function renderExerciseProgress(){
@@ -503,6 +504,40 @@ function renderExerciseProgress(){
    </div>`;
  }).join(""):'<p class="note">Registra le ripetizioni durante gli allenamenti per costruire lo storico esercizi.</p>');
 }
+
+function ftDraftKey(){ return "ftDraft_"+profile; }
+function saveLiveDraft(){
+ const w=plans[profile][currentDay];
+ const draft={
+   profile:profile,
+   day:currentDay,
+   ts:sessionStarted||Date.now(),
+   updatedAt:Date.now(),
+   durationSec:Math.max(0,activeSeconds||0),
+   kcal:kcalEstimate(Math.max(60,activeSeconds||60)),
+   logs:Array.isArray(repsLog)?repsLog.slice():[],
+   exIndex:exIndex,
+   setDone:setDone,
+   completed:false,
+   workoutName:w&&w.name?w.name:("Allenamento "+currentDay)
+ };
+ localStorage.setItem(ftDraftKey(),JSON.stringify(draft));
+}
+function loadLiveDraft(){
+ try { return JSON.parse(localStorage.getItem(ftDraftKey())||"null"); }
+ catch(e){ return null; }
+}
+function clearLiveDraft(){ localStorage.removeItem(ftDraftKey()); }
+function progressSessionsWithLive(){
+ const list=profileSessions().slice();
+ const draft=loadLiveDraft();
+ if(draft && Array.isArray(draft.logs) && draft.logs.length){
+   draft.isLive=true;
+   list.push(draft);
+ }
+ return list;
+}
+
 function completeSet(){
  const e=plans[profile][currentDay].ex[exIndex];
  if(setDone>=e[1]) return;
@@ -518,11 +553,13 @@ function completeSet(){
    set:setDone,
    reps:repsValue,
    note:noteValue,
-   rpe:selectedRPE||0
+   rpe:selectedRPE||0,
+   savedAt:Date.now()
  });
 
- selectedRPE=0;
+ saveLiveDraft();
 
+ selectedRPE=0;
  if(repsEl) repsEl.value="";
  if(noteEl) noteEl.value="";
  document.querySelectorAll("#rpeSelect button").forEach(b=>b.classList.remove("sel"));
@@ -566,12 +603,31 @@ function nextExercise(){
  if(exIndex<w.ex.length-1){exIndex++;setDone=0;renderExercise()}else finishSession();
 }
 function kcalEstimate(sec){let kg=profile==="dad"?72:53;let met=5.5;return Math.round(met*3.5*kg/200*(sec/60))}
-function finishSession(){clearInterval(sessionTicker);clearInterval(timerInt);let sec=Math.max(60,activeSeconds),d=db();d.sessions.push({profile,day:currentDay,ts:Date.now(),durationSec:sec,kcal:kcalEstimate(sec),logs:repsLog});saveDB(d);alert("Allenamento salvato!");show("home");renderHome()}
-function exitSession(){if(sessionStarted && confirm("Vuoi uscire senza completare l'allenamento?")){clearInterval(sessionTicker);clearInterval(timerInt);sessionStarted=null;show("home")}}
+function finishSession(){
+ clearInterval(sessionTicker);
+ clearInterval(timerInt);
+ const sec=Math.max(60,activeSeconds);
+ const d=db();
+ d.sessions.push({profile:profile,day:currentDay,ts:Date.now(),durationSec:sec,kcal:kcalEstimate(sec),logs:repsLog,completed:true});
+ saveDB(d);
+ clearLiveDraft();
+ alert("Allenamento salvato!");
+ show("home");
+ renderHome();
+}
+function exitSession(){
+ if(sessionStarted && confirm("Vuoi uscire? Le serie già completate resteranno salvate nel Diario come sessione in corso.")){
+   saveLiveDraft();
+   clearInterval(sessionTicker);
+   clearInterval(timerInt);
+   sessionStarted=null;
+   show("home");
+ }
+}
 function show(id){["home","session","nutrition","progressPage","safety"].forEach(x=>document.getElementById(x).classList.toggle("hidden",x!==id));if(id==="progressPage"){progressTab="overview";renderProgress();}if(id==="home")renderHome()}
 function renderHistory(){let ss=profileSessions().slice().reverse();history.innerHTML=ss.length?ss.map(s=>`<div class="card pad"><b>Allenamento ${s.day}</b><div class="sub">${new Date(s.ts).toLocaleString("it-IT")}</div><div class="chips"><span class="chip">⏱ ${fmtTime(s.durationSec)}</span><span class="chip">🔥 ${s.kcal} kcal stimate</span></div></div>`).join(""):'<p class="note">Ancora nessun allenamento registrato.</p>'}
 function openStats(){let s=stats();sheet.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center"><h2>Statistiche live</h2><button onclick="modal.classList.add('hidden')">✕</button></div><div class="statline"><div class="stat"><b>${s.sessions}</b><small>Allenamenti</small></div><div class="stat"><b>${fmtTime(s.totalSec)}</b><small>Tempo totale</small></div><div class="stat"><b>${s.kcal}</b><small>kcal stimate</small></div><div class="stat"><b>${s.streak}</b><small>Streak</small></div></div><div class="card pad"><b>Settimana</b><p>${s.weekDone}/3 allenamenti completati</p></div>`;modal.classList.remove("hidden")}
-function openSettings(){sheet.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center"><h2>Impostazioni</h2><button onclick="modal.classList.add('hidden')">✕</button></div><div class="card pad"><button style="width:100%" onclick="if(confirm('Azzero tutti i dati salvati?')){localStorage.removeItem('ftData');modal.classList.add('hidden');renderHome()}">Azzera tutti i dati</button></div><div class="card pad"><p class="note">I dati vengono salvati localmente su questo dispositivo/browser.</p><p class="note"><b>Versione: V9.1 Series Save Safari Fix</b></p></div>`;modal.classList.remove("hidden")}
+function openSettings(){sheet.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center"><h2>Impostazioni</h2><button onclick="modal.classList.add('hidden')">✕</button></div><div class="card pad"><button style="width:100%" onclick="if(confirm('Azzero tutti i dati salvati?')){localStorage.removeItem('ftData');modal.classList.add('hidden');renderHome()}">Azzera tutti i dati</button></div><div class="card pad"><p class="note">I dati vengono salvati localmente su questo dispositivo/browser.</p><p class="note"><b>Versione: V9.2 Live Save</b></p></div>`;modal.classList.remove("hidden")}
 function closeModal(e){if(e.target===modal)modal.classList.add("hidden")}
 renderHome();
 </script>
