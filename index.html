@@ -382,7 +382,7 @@ function renderExercise(){
  <div class="rpeSelect" id="rpeSelect">
    <button onclick="pickRPE(1,this)">🙂</button><button onclick="pickRPE(2,this)">😊</button><button onclick="pickRPE(3,this)">😐</button><button onclick="pickRPE(4,this)">😓</button><button onclick="pickRPE(5,this)">🥵</button>
  </div></div>
- <button class="green bigAction" style="margin-top:12px" onclick="completeSet()">✓ SERIE COMPLETATA</button>
+ <button id="seriesActionBtn" class="green bigAction" style="margin-top:12px" onclick="completeSet()">${setDone>=e[1]?(exIndex<plans[profile][currentDay].ex.length-1?"PROSSIMO ESERCIZIO →":"TERMINA ALLENAMENTO ✓"):"✓ SERIE COMPLETATA"}</button>
  </div>`;
  window.currentTip=e;
 }
@@ -538,9 +538,28 @@ function progressSessionsWithLive(){
  return list;
 }
 
+
+function advanceCompletedExercise(){
+ const w=plans[profile][currentDay];
+ if(setDone < w.ex[exIndex][1]) return;
+ if(exIndex < w.ex.length-1){
+   exIndex++;
+   setDone=0;
+   saveLiveDraft();
+   renderExercise();
+ }else{
+   finishSession();
+ }
+}
+
 function completeSet(){
  const e=plans[profile][currentDay].ex[exIndex];
- if(setDone>=e[1]) return;
+
+ // If all sets are already complete, this button acts as "next exercise".
+ if(setDone>=e[1]){
+   advanceCompletedExercise();
+   return;
+ }
 
  const repsEl=document.getElementById("repsInput");
  const noteEl=document.getElementById("noteInput");
@@ -570,6 +589,10 @@ function completeSet(){
  if(dotsEl){
    dotsEl.innerHTML=Array.from({length:e[1]},(_,i)=>`<span class="setDot ${i<setDone?'done':i===setDone?'now':''}"></span>`).join("");
  }
+ const actionBtn=document.getElementById("seriesActionBtn");
+ if(actionBtn && setDone>=e[1]){
+   actionBtn.textContent=exIndex<plans[profile][currentDay].ex.length-1?"PROSSIMO ESERCIZIO →":"TERMINA ALLENAMENTO ✓";
+ }
 
  if(setDone<e[1]){
    showRest(e[3],`Serie ${setDone+1} di ${e[1]} • ${e[0]}`);
@@ -578,11 +601,10 @@ function completeSet(){
      Math.min(e[3],60),
      exIndex<plans[profile][currentDay].ex.length-1
        ? `Prossimo: ${plans[profile][currentDay].ex[exIndex+1][0]}`
-       : "Ultimo recupero"
+       : "Allenamento quasi completato"
    );
  }
-}
-function showRest(sec,nextLabel){
+}function showRest(sec,nextLabel){
  let wrap=document.createElement("div");wrap.className="restOverlay";wrap.id="restOverlay";
  wrap.innerHTML=`<div class="restCard"><div class="sub">RECUPERO</div><div class="restClock" id="restClock">${formatClock(sec)}</div><div class="restNext">${nextLabel}</div><button class="primary bigAction" style="margin-top:18px" onclick="finishRest()">SALTA RECUPERO ›</button></div>`;
  document.body.appendChild(wrap); window.restLeft=sec;clearInterval(timerInt);
@@ -627,7 +649,7 @@ function exitSession(){
 function show(id){["home","session","nutrition","progressPage","safety"].forEach(x=>document.getElementById(x).classList.toggle("hidden",x!==id));if(id==="progressPage"){progressTab="overview";renderProgress();}if(id==="home")renderHome()}
 function renderHistory(){let ss=profileSessions().slice().reverse();history.innerHTML=ss.length?ss.map(s=>`<div class="card pad"><b>Allenamento ${s.day}</b><div class="sub">${new Date(s.ts).toLocaleString("it-IT")}</div><div class="chips"><span class="chip">⏱ ${fmtTime(s.durationSec)}</span><span class="chip">🔥 ${s.kcal} kcal stimate</span></div></div>`).join(""):'<p class="note">Ancora nessun allenamento registrato.</p>'}
 function openStats(){let s=stats();sheet.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center"><h2>Statistiche live</h2><button onclick="modal.classList.add('hidden')">✕</button></div><div class="statline"><div class="stat"><b>${s.sessions}</b><small>Allenamenti</small></div><div class="stat"><b>${fmtTime(s.totalSec)}</b><small>Tempo totale</small></div><div class="stat"><b>${s.kcal}</b><small>kcal stimate</small></div><div class="stat"><b>${s.streak}</b><small>Streak</small></div></div><div class="card pad"><b>Settimana</b><p>${s.weekDone}/3 allenamenti completati</p></div>`;modal.classList.remove("hidden")}
-function openSettings(){sheet.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center"><h2>Impostazioni</h2><button onclick="modal.classList.add('hidden')">✕</button></div><div class="card pad"><button style="width:100%" onclick="if(confirm('Azzero tutti i dati salvati?')){localStorage.removeItem('ftData');modal.classList.add('hidden');renderHome()}">Azzera tutti i dati</button></div><div class="card pad"><p class="note">I dati vengono salvati localmente su questo dispositivo/browser.</p><p class="note"><b>Versione: V9.2 Live Save</b></p></div>`;modal.classList.remove("hidden")}
+function openSettings(){sheet.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center"><h2>Impostazioni</h2><button onclick="modal.classList.add('hidden')">✕</button></div><div class="card pad"><button style="width:100%" onclick="if(confirm('Azzero tutti i dati salvati?')){localStorage.removeItem('ftData');modal.classList.add('hidden');renderHome()}">Azzera tutti i dati</button></div><div class="card pad"><p class="note">I dati vengono salvati localmente su questo dispositivo/browser.</p><p class="note"><b>Versione: V9.3 Next Exercise Fix</b></p></div>`;modal.classList.remove("hidden")}
 function closeModal(e){if(e.target===modal)modal.classList.add("hidden")}
 renderHome();
 </script>
