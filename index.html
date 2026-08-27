@@ -96,13 +96,12 @@ main{max-width:720px;padding:14px 14px 108px}
 .restOverlay{position:fixed;inset:0;background:#05080df2;z-index:120;display:flex;align-items:center;justify-content:center;padding:18px}.restCard{width:min(430px,100%);text-align:center;background:#0e1723;border:1px solid #304158;border-radius:26px;padding:22px}.restClock{font-size:74px;font-weight:950;font-variant-numeric:tabular-nums;margin:12px 0}.restNext{color:#a9b6c6;font-size:13px}
 
 
-/* V8.1 SMART PROGRESSION FIX */
+/* V8.2 SMART PROGRESSION SAFE FIX */
 .smartBox{background:linear-gradient(145deg,#111a2b,#18142c);border:1px solid #6047aa;border-radius:16px;padding:13px;margin:12px 0;box-shadow:0 10px 26px #6f4cff20}
 .smartHead{display:flex;justify-content:space-between;gap:8px;align-items:center;font-weight:900}
 .smartBadge{background:#704cff;border-radius:999px;padding:5px 8px;font-size:10px}
 .smartTarget{font-size:17px;font-weight:950;margin-top:8px}
 .smartText{font-size:12px;color:#c4cedc;line-height:1.45;margin-top:6px}
-
 </style></head>
 <body>
 <main>
@@ -234,10 +233,17 @@ function stats(){
 }
 function fmtTime(sec){if(sec<3600)return Math.round(sec/60)+"m";return Math.floor(sec/3600)+"h "+Math.round((sec%3600)/60)+"m"}
 function renderHome(){
- dadBtn.classList.toggle("active",profile==="dad");girlBtn.classList.toggle("active",profile==="girl");
- welcome.textContent=profile==="dad"?"Bentornato! 👋":"Pronta ad allenarti? 👋";
- let s=stats();topStreak.textContent=s.streak;topSessions.textContent=s.sessions;sSessions.textContent=s.sessions;sTime.textContent=fmtTime(s.totalSec);sCalories.textContent=s.kcal;sStreak.textContent=s.streak;pct.textContent=s.pct+"%";ring.style.setProperty("--pct",s.pct+"%");weekText.textContent=s.weekDone+"/3";weekBar.style.width=(s.weekDone/3*100)+"%";
- workouts.innerHTML=Object.entries(plans[profile]).map(([k,w])=>`<div class="card workout"><img src="${w.img}"><div class="body"><div><div class="wtitle">${w.name}</div><div class="chips"><span class="chip">🏠 ${w.place}</span><span class="chip">⏱ ${w.mins} min</span></div><div class="desc">${w.desc}</div><div style="color:#c780ff;font-weight:800;margin-top:8px">${w.ex.length} esercizi</div></div><button class="primary" onclick="start('${k}')">INIZIA ALLENAMENTO ▶</button></div></div>`).join("");
+ const D=id=>document.getElementById(id);
+ D("dadBtn").classList.toggle("active",profile==="dad");
+ D("girlBtn").classList.toggle("active",profile==="girl");
+ D("welcome").textContent=profile==="dad"?"Bentornato! 👋":"Pronta ad allenarti? 👋";
+ const s=stats();
+ D("topStreak").textContent=s.streak; D("topSessions").textContent=s.sessions;
+ D("sSessions").textContent=s.sessions; D("sTime").textContent=fmtTime(s.totalSec);
+ D("sCalories").textContent=s.kcal; D("sStreak").textContent=s.streak;
+ D("pct").textContent=s.pct+"%"; D("ring").style.setProperty("--pct",s.pct+"%");
+ D("weekText").textContent=s.weekDone+"/3"; D("weekBar").style.width=(s.weekDone/3*100)+"%";
+ D("workouts").innerHTML=Object.entries(plans[profile]).map(([k,w])=>`<div class="card workout"><img src="${w.img}"><div class="body"><div><div class="wtitle">${w.name}</div><div class="chips"><span class="chip">🏠 ${w.place}</span><span class="chip">⏱ ${w.mins} min</span></div><div class="desc">${w.desc}</div><div style="color:#c780ff;font-weight:800;margin-top:8px">${w.ex.length} esercizi</div></div><button class="primary" onclick="start('${k}')">INIZIA ALLENAMENTO ▶</button></div></div>`).join("");
 }
 function start(day){currentDay=day;exIndex=0;setDone=0;repsLog=[];sessionStarted=Date.now();activeSeconds=0;clearInterval(sessionTicker);sessionTicker=setInterval(()=>{activeSeconds++;sessionElapsed.textContent=new Date(activeSeconds*1000).toISOString().slice(14,19)},1000);show("session");renderExercise()}
 function mediaBlock(type,name){return `<div class="video"><span class="badge">▶️ TUTORIAL VIDEO</span><video src="${media[type]}" autoplay muted loop playsinline controls preload="metadata"></video></div>`}
@@ -285,37 +291,38 @@ function exerciseInfo(e){
 }
 
 function ftRepRange(txt){
- let m=String(txt).match(/(\d+)\s*[–-]\s*(\d+)/);
- if(m)return {min:Number(m[1]),max:Number(m[2])};
- let n=String(txt).match(/(\d+)/);
- return n?{min:Number(n[1]),max:Number(n[1])}:{min:null,max:null};
+  const m=String(txt).match(/(\d+)\s*[–-]\s*(\d+)/);
+  if(m) return {min:Number(m[1]),max:Number(m[2])};
+  const n=String(txt).match(/(\d+)/);
+  return n ? {min:Number(n[1]),max:Number(n[1])} : {min:null,max:null};
 }
 function ftPreviousLogs(name){
- let ss=profileSessions().slice().sort((a,b)=>b.ts-a.ts);
- for(let s of ss){
-   let logs=(s.logs||[]).filter(x=>x.exercise===name);
-   if(logs.length)return logs;
- }
- return [];
+  const sessions=(db().sessions||[]).filter(s=>s.profile===profile).slice().sort((a,b)=>b.ts-a.ts);
+  for(const s of sessions){
+    const logs=(s.logs||[]).filter(x=>x.exercise===name);
+    if(logs.length) return logs;
+  }
+  return [];
 }
 function ftAdvice(e){
- let r=ftRepRange(e[2]),logs=ftPreviousLogs(e[0]);
- if(!logs.length)return {badge:"PRIMA VOLTA",target:"Obiettivo: "+e[2],text:"Parti dal limite basso del range con tecnica pulita. Questa seduta diventerà il riferimento per la prossima."};
- let nums=logs.map(x=>parseInt(x.reps,10)).filter(Number.isFinite);
- if(!nums.length||r.min===null)return {badge:"MANTIENI",target:"Obiettivo: "+e[2],text:"Registra le ripetizioni di ogni serie: dalla prossima seduta potrò calcolare la progressione."};
- let avg=nums.reduce((a,b)=>a+b,0)/nums.length;
- if(nums.length>=Math.min(e[1],3)&&nums.every(n=>n>=r.max)){
-   return profile==="girl"
-    ?{badge:"PROGRESSIONE",target:"Mantieni il range con più controllo",text:"Hai raggiunto il limite alto. Prima aumentiamo qualità, controllo e regolarità del movimento."}
-    :{badge:"AUMENTA",target:"Piccolo passo in avanti",text:"Hai raggiunto il limite alto. Aumenta gradualmente ripetizioni, tempo sotto tensione o difficoltà senza perdere tecnica."};
- }
- if(avg<r.min)return {badge:"RIDUCI",target:"Torna verso "+r.min+" ripetizioni pulite",text:"La media precedente era sotto il target. Riduci leggermente difficoltà o carico e ricostruisci la tecnica."};
- let t=Math.min(r.max,Math.max(r.min,Math.round(avg)+1));
- return {badge:"+1 REP",target:"Prova circa "+t+" ripetizioni per serie",text:"Ultima media: "+avg.toFixed(1)+". Prova un piccolo miglioramento mantenendo la stessa qualità."};
+  const range=ftRepRange(e[2]);
+  const logs=ftPreviousLogs(e[0]);
+  if(!logs.length) return {badge:"PRIMA VOLTA",target:"Obiettivo: "+e[2],text:"Parti dal limite basso del range con tecnica pulita. Questa seduta diventerà il riferimento per la prossima."};
+  const nums=logs.map(x=>parseInt(x.reps,10)).filter(n=>Number.isFinite(n));
+  if(!nums.length || range.min===null) return {badge:"MANTIENI",target:"Obiettivo: "+e[2],text:"Registra le ripetizioni di ogni serie: dalla prossima seduta potrò calcolare la progressione."};
+  const avg=nums.reduce((a,b)=>a+b,0)/nums.length;
+  if(nums.length>=Math.min(e[1],3) && nums.every(n=>n>=range.max)){
+    return profile==="girl"
+      ? {badge:"PROGRESSIONE",target:"Mantieni il range con più controllo",text:"Hai raggiunto il limite alto. Aumentiamo prima qualità e controllo del movimento."}
+      : {badge:"AUMENTA",target:"Piccolo passo in avanti",text:"Hai raggiunto il limite alto. Aumenta gradualmente ripetizioni, tempo sotto tensione o difficoltà senza perdere tecnica."};
+  }
+  if(avg<range.min) return {badge:"RIDUCI",target:"Torna verso "+range.min+" ripetizioni pulite",text:"La media precedente era sotto il target. Riduci leggermente difficoltà o carico e ricostruisci la tecnica."};
+  const target=Math.min(range.max,Math.max(range.min,Math.round(avg)+1));
+  return {badge:"+1 REP",target:"Prova circa "+target+" ripetizioni per serie",text:"Ultima media: "+avg.toFixed(1)+". Prova un piccolo miglioramento mantenendo la stessa qualità."};
 }
 function ftSmartBox(e){
- let a=ftAdvice(e);
- return `<div class="smartBox"><div class="smartHead"><span>🧠 Progressione intelligente</span><span class="smartBadge">${a.badge}</span></div><div class="smartTarget">${a.target}</div><div class="smartText">${a.text}</div></div>`;
+  const a=ftAdvice(e);
+  return `<div class="smartBox"><div class="smartHead"><span>🧠 Progressione intelligente</span><span class="smartBadge">${a.badge}</span></div><div class="smartTarget">${a.target}</div><div class="smartText">${a.text}</div></div>`;
 }
 
 function renderExercise(){
@@ -327,8 +334,7 @@ function renderExercise(){
  exerciseView.innerHTML=`<div class="card pad">
  <div class="exerciseHeader">${e[0]}</div>
  <div class="exerciseMeta"><span class="chip">${e[4]}</span><span class="chip">${e[1]} serie</span><span class="chip">${e[2]}</span></div>
- ${ftSmartBox(e)}
- ${mediaBlock(e[5],e[0])}
+ ${ftSmartBox(e)}${mediaBlock(e[5],e[0])}
  <div class="tabs"><button id="tabHow" class="on" onclick="showTip('how')">COME FARLO</button><button id="tabErr" onclick="showTip('err')">ERRORI</button><button id="tabMus" onclick="showTip('mus')">MUSCOLI</button></div>
  <div id="tipPanel" class="infoPanel">${e[6]}</div>
  <div class="levels"><div class="level"><b>⬇️ PIÙ FACILE</b><br>${inf.easy}</div><div class="level"><b>⬆️ PIÙ DIFFICILE</b><br>${inf.hard}</div></div>
@@ -380,7 +386,7 @@ function exitSession(){if(sessionStarted && confirm("Vuoi uscire senza completar
 function show(id){["home","session","nutrition","progressPage","safety"].forEach(x=>document.getElementById(x).classList.toggle("hidden",x!==id));if(id==="progressPage")renderHistory();if(id==="home")renderHome()}
 function renderHistory(){let ss=profileSessions().slice().reverse();history.innerHTML=ss.length?ss.map(s=>`<div class="card pad"><b>Allenamento ${s.day}</b><div class="sub">${new Date(s.ts).toLocaleString("it-IT")}</div><div class="chips"><span class="chip">⏱ ${fmtTime(s.durationSec)}</span><span class="chip">🔥 ${s.kcal} kcal stimate</span></div></div>`).join(""):'<p class="note">Ancora nessun allenamento registrato.</p>'}
 function openStats(){let s=stats();sheet.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center"><h2>Statistiche live</h2><button onclick="modal.classList.add('hidden')">✕</button></div><div class="statline"><div class="stat"><b>${s.sessions}</b><small>Allenamenti</small></div><div class="stat"><b>${fmtTime(s.totalSec)}</b><small>Tempo totale</small></div><div class="stat"><b>${s.kcal}</b><small>kcal stimate</small></div><div class="stat"><b>${s.streak}</b><small>Streak</small></div></div><div class="card pad"><b>Settimana</b><p>${s.weekDone}/3 allenamenti completati</p></div>`;modal.classList.remove("hidden")}
-function openSettings(){sheet.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center"><h2>Impostazioni</h2><button onclick="modal.classList.add('hidden')">✕</button></div><div class="card pad"><button style="width:100%" onclick="if(confirm('Azzero tutti i dati salvati?')){localStorage.removeItem('ftData');modal.classList.add('hidden');renderHome()}">Azzera tutti i dati</button></div><div class="card pad"><p class="note">I dati vengono salvati localmente su questo dispositivo/browser.</p><p class="note"><b>Versione: V8.1 Smart Progression Fix</b></p></div>`;modal.classList.remove("hidden")}
+function openSettings(){sheet.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center"><h2>Impostazioni</h2><button onclick="modal.classList.add('hidden')">✕</button></div><div class="card pad"><button style="width:100%" onclick="if(confirm('Azzero tutti i dati salvati?')){localStorage.removeItem('ftData');modal.classList.add('hidden');renderHome()}">Azzera tutti i dati</button></div><div class="card pad"><p class="note">I dati vengono salvati localmente su questo dispositivo/browser.</p></div>`;modal.classList.remove("hidden")}
 function closeModal(e){if(e.target===modal)modal.classList.add("hidden")}
 renderHome();
 </script>
