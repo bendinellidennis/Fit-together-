@@ -248,6 +248,19 @@ main{max-width:720px;padding:14px 14px 108px}
 .searchInput{width:100%;background:#0b141f;border:1px solid #2b3c53;color:#fff;border-radius:12px;padding:11px;font-size:15px}
 .emptyState{text-align:center;padding:24px;color:#9ba8ba}
 
+
+/* V18 READINESS COACH */
+.readyBox{background:linear-gradient(145deg,#101827,#19142c);border:1px solid #5d47a7;border-radius:18px;padding:14px;margin:12px 0}
+.readyGrid{display:grid;grid-template-columns:110px 1fr;gap:14px;align-items:center}
+.readyRing{width:104px;height:104px;border-radius:50%;display:grid;place-items:center;background:conic-gradient(#32d17c var(--ready,0%),#1a2635 0);position:relative}
+.readyRing:after{content:"";position:absolute;inset:11px;border-radius:50%;background:#0e1723}
+.readyRing span{z-index:2;font-size:25px;font-weight:950}
+.readyState{font-size:20px;font-weight:950}
+.readyFactors{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:10px}
+.readyFactor{background:#0d1723;border:1px solid #28384e;border-radius:12px;padding:9px;font-size:11px}
+.readyGreen{color:#8ff0b5}.readyAmber{color:#ffd184}.readyRed{color:#ff9c9c}
+@media(max-width:430px){.readyGrid{grid-template-columns:92px 1fr}.readyRing{width:88px;height:88px}.readyRing span{font-size:21px}}
+
 </style><link rel="manifest" href="manifest.webmanifest">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -303,6 +316,15 @@ main{max-width:720px;padding:14px 14px 108px}
   </div>
   <div id="plannerHome"></div>
 </div>
+
+<div class="readyBox">
+  <div class="row" style="display:flex;justify-content:space-between;align-items:center">
+    <div><b>⚡ Readiness Coach</b><div class="sub">Quanto sei pronto ad allenarti oggi.</div></div>
+    <button onclick="openReadiness()">DETTAGLI</button>
+  </div>
+  <div id="readinessHome"></div>
+</div>
+
 
 <div class="libraryBox">
   <div class="row" style="display:flex;justify-content:space-between;align-items:center">
@@ -764,10 +786,12 @@ function restAdvice(){
 function plannerSuggestion(){
  const db=plannerDb(),today=plannerTodayIndex(),week=plannerWeekSessions();
  const completed=new Set(week.map(s=>s.day));
- const next=chooseNextWorkout(),rest=restAdvice();
+ const next=chooseNextWorkout(),rest=restAdvice(),ready=readinessData();
  const scheduled=db.days.includes(today);
  const target=db.target||3;
- return {db,today,week,completed,next,rest,scheduled,target};
+ if(ready.intensity==="RECUPERO"){rest.ready=false;rest.text=ready.advice}
+ else if(ready.intensity==="RIDOTTA"){rest.text=ready.advice}
+ return {db,today,week,completed,next,rest,scheduled,target,ready};
 }
 function renderPlannerHome(){
  const box=document.getElementById("plannerHome");if(!box)return;
@@ -874,9 +898,88 @@ function renderWorkoutLibrary(){
  }).join(""):'<div class="emptyState">Nessun allenamento corrisponde ai filtri.</div>'}`;
 }
 
+
+function recentRPE(){
+ const logs=allExerciseLogs().filter(x=>x.rpe).slice(-12);
+ if(!logs.length)return null;
+ return logs.reduce((a,b)=>a+Number(b.rpe||0),0)/logs.length;
+}
+function readinessData(){
+ const nt=nutriToday().day;
+ const ss=profileSessions().slice().sort((a,b)=>b.ts-a.ts);
+ const last=ss[0];
+ const hours=last?(Date.now()-last.ts)/3600000:999;
+ const sleep=parseFloat(nt.sleep||0);
+ const energy=Number(nt.energy||0);
+ const rpe=recentRPE();
+
+ let score=70;
+ const factors=[];
+
+ if(!last){score+=10;factors.push(["Recupero","Nessuna seduta recente","+10"])}
+ else if(hours<12){score-=25;factors.push(["Recupero","< 12 ore","-25"])}
+ else if(hours<24){score-=10;factors.push(["Recupero","12–24 ore","-10"])}
+ else if(hours<48){score+=5;factors.push(["Recupero","24–48 ore","+5"])}
+ else{score+=10;factors.push(["Recupero","> 48 ore","+10"])}
+
+ if(sleep){
+   if(sleep>=8){score+=10;factors.push(["Sonno",sleep+" h","+10"])}
+   else if(sleep>=7){score+=5;factors.push(["Sonno",sleep+" h","+5"])}
+   else if(sleep>=6){score-=5;factors.push(["Sonno",sleep+" h","-5"])}
+   else{score-=15;factors.push(["Sonno",sleep+" h","-15"])}
+ }else factors.push(["Sonno","non registrato","0"]);
+
+ if(energy){
+   const delta=(energy-3)*5;score+=delta;factors.push(["Energia",energy+"/5",(delta>=0?"+":"")+delta])
+ }else factors.push(["Energia","non registrata","0"]);
+
+ if(rpe){
+   if(rpe>=4.3){score-=10;factors.push(["RPE recente",rpe.toFixed(1)+"/5","-10"])}
+   else if(rpe<=2.5){score+=5;factors.push(["RPE recente",rpe.toFixed(1)+"/5","+5"])}
+   else factors.push(["RPE recente",rpe.toFixed(1)+"/5","0"]);
+ }else factors.push(["RPE recente","nessun dato","0"]);
+
+ const water=Number(nt.water||0),protein=Number(nt.proteinMeals||0);
+ if(water>=6){score+=5;factors.push(["Idratazione",water+" bicchieri","+5"])}
+ else if(water>0){factors.push(["Idratazione",water+" bicchieri","0"])}
+ else factors.push(["Idratazione","non registrata","0"]);
+ if(protein>=2){score+=5;factors.push(["Pasti proteici",protein,"+5"])}
+ else factors.push(["Pasti proteici",protein||0,"0"]);
+
+ score=Math.max(0,Math.min(100,Math.round(score)));
+
+ let state,cls,advice,intensity;
+ if(score>=80){state="PRONTO";cls="readyGreen";advice="Puoi seguire il programma previsto con intensità normale.";intensity="NORMALE"}
+ else if(score>=60){state="BUONO";cls="readyGreen";advice="Allenamento consigliato, ma senza forzare oltre la tecnica.";intensity="NORMALE"}
+ else if(score>=40){state="RIDOTTO";cls="readyAmber";advice="Meglio una seduta breve o ridotta di volume.";intensity="RIDOTTA"}
+ else{state="RECUPERO";cls="readyRed";advice="Meglio recupero, mobilità o una camminata leggera.";intensity="RECUPERO"}
+
+ if(profile==="girl" && intensity!=="NORMALE"){
+   advice="Per il profilo adolescente oggi meglio privilegiare recupero, tecnica e attività leggera.";
+ }
+ return {score,state,cls,advice,intensity,factors};
+}
+function renderReadinessHome(){
+ const box=document.getElementById("readinessHome");if(!box)return;
+ const r=readinessData();
+ box.innerHTML=`<div class="readyGrid">
+   <div class="readyRing" style="--ready:${r.score}%"><span>${r.score}%</span></div>
+   <div><div class="readyState ${r.cls}">${r.state}</div><div class="planReason">${r.advice}</div><div class="chips"><span class="chip">Intensità ${r.intensity}</span></div></div>
+ </div>`;
+}
+function openReadiness(){
+ const r=readinessData();
+ sheet.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center"><h2>⚡ Readiness Coach</h2><button onclick="modal.classList.add('hidden')">✕</button></div>
+ <div class="card pad"><div class="readyGrid"><div class="readyRing" style="--ready:${r.score}%"><span>${r.score}%</span></div><div><div class="readyState ${r.cls}">${r.state}</div><p class="note">${r.advice}</p></div></div></div>
+ <div class="card pad"><h3>Fattori usati</h3><div class="readyFactors">${r.factors.map(f=>`<div class="readyFactor"><b>${f[0]}</b><br>${f[1]}<br><span class="${String(f[2]).startsWith("-")?"readyRed":"readyGreen"}">${f[2]}</span></div>`).join("")}</div></div>
+ <div class="card pad"><p class="note">Il punteggio è una guida pratica basata sui dati che inserisci nell'app, non un test medico.</p></div>`;
+ modal.classList.remove("hidden");
+}
+
 function renderHome(){
  updateOfflineStatus();
  setTimeout(renderPlannerHome,0);
+ setTimeout(renderReadinessHome,0);
  setTimeout(renderFavoriteQuick,0);
  const D=id=>document.getElementById(id);
  D("dadBtn").classList.toggle("active",profile==="dad");
@@ -1517,7 +1620,7 @@ function openSettings(){
  <div class="card pad">
   <button style="width:100%" onclick="if(confirm('Azzero tutti i dati salvati?')){clearAllFitData();modal.classList.add('hidden');renderHome()}">Azzera tutti i dati</button>
  </div>
- <div class="card pad"><p class="note">I dati vengono salvati localmente su questo dispositivo/browser.</p><p class="note"><b>Versione: V17 Libreria Allenamenti</b></p></div>`;
+ <div class="card pad"><p class="note">I dati vengono salvati localmente su questo dispositivo/browser.</p><p class="note"><b>Versione: V18 Readiness Coach</b></p></div>`;
  modal.classList.remove("hidden")
 }
 
