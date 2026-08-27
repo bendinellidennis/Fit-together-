@@ -283,6 +283,18 @@ main{max-width:720px;padding:14px 14px 108px}
 .phaseTimer{font-size:42px;font-weight:950;text-align:center;margin:12px 0}
 .phaseProgress{height:9px;background:#1a2635;border-radius:99px;overflow:hidden;margin-top:8px}.phaseProgress i{display:block;height:100%;background:linear-gradient(90deg,#7c50ff,#32d17c)}
 
+
+/* V21 CUSTOM WORKOUT BUILDER */
+.builderBox{background:linear-gradient(145deg,#101827,#19142c);border:1px solid #5d47a7;border-radius:18px;padding:14px;margin:12px 0}
+.builderList{display:grid;gap:8px;margin-top:10px}
+.builderExercise{background:#0d1723;border:1px solid #28384e;border-radius:14px;padding:11px}
+.builderExercise.sel{outline:2px solid #8a5cff}
+.builderTop{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.builderMeta{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:8px}
+.builderMeta input,.builderMeta select{width:100%}
+.customBadge{display:inline-block;background:#4b3a80;color:#efe7ff;border-radius:999px;padding:4px 7px;font-size:10px;font-weight:900}
+.customCard{border-color:#674cae!important}
+
 </style><link rel="manifest" href="manifest.webmanifest">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -355,6 +367,15 @@ main{max-width:720px;padding:14px 14px 108px}
   </div>
   <div id="favoriteQuick" class="sub" style="margin-top:8px"></div>
 </div>
+
+<div class="builderBox">
+  <div class="row" style="display:flex;justify-content:space-between;align-items:center">
+    <div><b>🛠️ Crea il tuo allenamento</b><div class="sub">Componi una scheda personale usando gli esercizi già presenti nell'app.</div></div>
+    <button onclick="openCustomBuilder()">CREA</button>
+  </div>
+  <div id="customQuick" class="sub" style="margin-top:8px"></div>
+</div>
+
 
 
 
@@ -690,7 +711,8 @@ function fitStorageKeys(){
       k.startsWith("ftBody_") ||
       k.startsWith("ftNutrition_") ||
       k.startsWith("ftPlanner_") ||
-      k.startsWith("ftFavorites_")
+      k.startsWith("ftFavorites_") ||
+      k.startsWith("ftCustomWorkouts_")
    )) keys.push(k);
  }
  return [...new Set(keys)].sort();
@@ -916,6 +938,18 @@ function renderWorkoutLibrary(){
  const box=document.getElementById("workoutLibraryContent");if(!box)return;
  const favs=getFavorites();
  const entries=Object.entries(plans[profile]).filter(([k,w])=>libraryMatches(k,w));
+ const custom=customWorkouts().filter(w=>{
+   const q=librarySearch.trim().toLowerCase();
+   if(q && !(`${w.name} ${w.desc} ${w.place}`.toLowerCase().includes(q)))return false;
+   if(libraryFilter==="CASA"&&!String(w.place).includes("Casa"))return false;
+   if(libraryFilter==="MARE"&&!String(w.place).includes("Mare"))return false;
+   if(libraryFilter==="PREFERITI")return false;
+   const mins=Number(w.mins)||40;
+   if(libraryDuration==="BREVE"&&mins>30)return false;
+   if(libraryDuration==="MEDIA"&&(mins<31||mins>45))return false;
+   if(libraryDuration==="LUNGA"&&mins<46)return false;
+   return true;
+ });
  box.innerHTML=`<input class="searchInput" value="${librarySearch}" oninput="updateLibrarySearch(this.value)" placeholder="Cerca: gambe, core, mare...">
  <div class="libraryFilters">
   <button class="${libraryFilter==="ALL"?"sel":""}" onclick="setLibraryFilter('ALL')">TUTTI</button>
@@ -932,7 +966,7 @@ function renderWorkoutLibrary(){
  ${entries.length?entries.map(([k,base])=>{
    const w=adaptiveWorkout(base);
    return `<div class="libraryItem"><div class="libraryItemTop"><div><div class="wtitle">${k} · ${w.name}</div><div class="libraryMeta"><span class="chip">${String(w.place).includes("Mare")?"🌊":"🏠"} ${w.place}</span><span class="chip">⏱ ${w.mins} min</span><span class="chip">${w.ex.length} esercizi</span></div></div><button class="favBtn ${favs.includes(k)?"on":""}" onclick="toggleFavorite('${k}')">${favs.includes(k)?"⭐":"☆"}</button></div><p class="desc">${w.desc}</p><button class="primary" style="width:100%;margin-top:8px" onclick="modal.classList.add('hidden');start('${k}')">INIZIA ALLENAMENTO ▶</button></div>`;
- }).join(""):'<div class="emptyState">Nessun allenamento corrisponde ai filtri.</div>'}`;
+ }).join(""):""}${custom.length?custom.map(w=>`<div class="libraryItem customCard"><div class="libraryItemTop"><div><div class="wtitle">${w.name}</div><div class="libraryMeta"><span class="customBadge">PERSONALIZZATO</span><span class="chip">${w.place}</span><span class="chip">⏱ ${w.mins} min</span><span class="chip">${w.ex.length} esercizi</span></div></div></div><div class="planGrid"><button onclick="openCustomBuilder('${w.id}')">MODIFICA</button><button onclick="deleteCustomWorkout('${w.id}')">ELIMINA</button></div><button class="primary" style="width:100%;margin-top:8px" onclick="modal.classList.add('hidden');startCustomWorkout('${w.id}')">INIZIA ▶</button></div>`).join(""):""}${(!entries.length&&!custom.length)?'<div class="emptyState">Nessun allenamento corrisponde ai filtri.</div>':""}`;
 }
 
 
@@ -1013,11 +1047,101 @@ function openReadiness(){
  modal.classList.remove("hidden");
 }
 
+
+function customKey(){return "ftCustomWorkouts_"+profile}
+function customWorkouts(){
+ try{return JSON.parse(localStorage.getItem(customKey())||"[]")}catch(e){return []}
+}
+function saveCustomWorkouts(arr){localStorage.setItem(customKey(),JSON.stringify(arr))}
+function exerciseLibrary(){
+ const out={}, source=plans[profile];
+ Object.values(source).forEach(w=>w.ex.forEach(e=>{
+   if(!out[e[0]])out[e[0]]=e;
+ }));
+ return Object.values(out);
+}
+function renderCustomQuick(){
+ const el=document.getElementById("customQuick");if(!el)return;
+ const arr=customWorkouts();
+ el.textContent=arr.length?`📌 ${arr.length} allenament${arr.length===1?"o personalizzato":"i personalizzati"} salvati.`:"Nessun allenamento personalizzato ancora.";
+}
+function openCustomBuilder(editId=null){
+ const arr=customWorkouts();
+ const existing=editId?arr.find(x=>x.id===editId):null;
+ const lib=exerciseLibrary();
+ const selected=new Set(existing?existing.ex.map(e=>e[0]):[]);
+ const rows=lib.map((e,i)=>`<div class="builderExercise ${selected.has(e[0])?"sel":""}" data-exidx="${i}">
+   <div class="builderTop"><div><b>${e[0]}</b><div class="sub">${e[4]}</div></div><button onclick="toggleBuilderExercise(${i},this)">${selected.has(e[0])?"✓":"+"}</button></div>
+   <div class="builderMeta ${selected.has(e[0])?"":"hidden"}" id="builderMeta${i}">
+     <label class="sub">Serie<input class="input" id="builderSets${i}" inputmode="numeric" value="${selected.has(e[0])?(existing.ex.find(x=>x[0]===e[0])?.[1]||e[1]):e[1]}"></label>
+     <label class="sub">Ripetizioni<input class="input" id="builderReps${i}" value="${selected.has(e[0])?(existing.ex.find(x=>x[0]===e[0])?.[2]||e[2]):e[2]}"></label>
+   </div>
+ </div>`).join("");
+
+ sheet.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center"><h2>🛠️ ${existing?"Modifica":"Crea"} allenamento</h2><button onclick="modal.classList.add('hidden')">✕</button></div>
+ <div class="card pad">
+  <label class="sub">Nome</label><input id="builderName" class="input" value="${existing?.name||""}" placeholder="es. Total Body Dennis">
+  <div class="builderMeta">
+   <label class="sub">Luogo<select id="builderPlace" class="input"><option ${existing?.place==="Casa"?"selected":""}>Casa</option><option ${existing?.place==="Mare"?"selected":""}>Mare</option><option ${existing?.place==="Casa / Mare"?"selected":""}>Casa / Mare</option></select></label>
+   <label class="sub">Durata min<input id="builderMinutes" class="input" inputmode="numeric" value="${existing?.mins||40}"></label>
+  </div>
+ </div>
+ <div class="card pad"><h3>Scegli gli esercizi</h3><p class="note">Seleziona gli esercizi e personalizza serie/ripetizioni.</p><div class="builderList" id="builderList">${rows}</div></div>
+ <button class="green bigAction" onclick="saveCustomBuilder(${editId?JSON.stringify(editId):"null"})">SALVA ALLENAMENTO</button>`;
+ modal.classList.remove("hidden");
+}
+function toggleBuilderExercise(i,btn){
+ const card=btn.closest(".builderExercise"),meta=document.getElementById("builderMeta"+i);
+ card.classList.toggle("sel");
+ meta.classList.toggle("hidden",!card.classList.contains("sel"));
+ btn.textContent=card.classList.contains("sel")?"✓":"+";
+}
+function saveCustomBuilder(editId=null){
+ const name=document.getElementById("builderName")?.value.trim();
+ if(!name){alert("Inserisci un nome per l'allenamento.");return}
+ const place=document.getElementById("builderPlace")?.value||"Casa";
+ const mins=Math.max(10,Math.min(120,parseInt(document.getElementById("builderMinutes")?.value||40,10)));
+ const lib=exerciseLibrary(), chosen=[];
+ document.querySelectorAll(".builderExercise.sel").forEach(card=>{
+   const i=Number(card.dataset.exidx),base=lib[i];if(!base)return;
+   const sets=Math.max(1,Math.min(10,parseInt(document.getElementById("builderSets"+i)?.value||base[1],10)));
+   const reps=document.getElementById("builderReps"+i)?.value.trim()||base[2];
+   const copy=base.slice();copy[1]=sets;copy[2]=reps;chosen.push(copy);
+ });
+ if(chosen.length<2){alert("Scegli almeno 2 esercizi.");return}
+ const arr=customWorkouts();
+ const id=editId||("C"+Date.now());
+ const item={id,name,place,mins,desc:"Allenamento personalizzato",img:chosen[0][5]&&media[chosen[0][5]]?plans[profile].A.img:plans[profile].A.img,ex:chosen,custom:true,createdAt:Date.now()};
+ const pos=arr.findIndex(x=>x.id===id);
+ if(pos>=0)arr[pos]=item;else arr.push(item);
+ saveCustomWorkouts(arr);
+ modal.classList.add("hidden");
+ renderHome();
+ alert("Allenamento personalizzato salvato.");
+}
+function deleteCustomWorkout(id){
+ if(!confirm("Eliminare questo allenamento personalizzato?"))return;
+ const arr=customWorkouts().filter(x=>x.id!==id);saveCustomWorkouts(arr);renderHome();openWorkoutLibrary();
+}
+function startCustomWorkout(id){
+ const item=customWorkouts().find(x=>x.id===id);if(!item)return;
+ currentDay=id;sessionWorkout=item;
+ phaseState={type:"warmup",day:id,steps:warmupPlan(item),index:0,left:0,custom:true};
+ show("phaseGuide");renderPhase();
+}
+function beginCustomWorkoutSession(item){
+ currentDay=item.id;sessionWorkout=item;exIndex=0;setDone=0;repsLog=[];sessionStarted=Date.now();activeSeconds=0;
+ clearInterval(sessionTicker);
+ sessionTicker=setInterval(()=>{activeSeconds++;sessionElapsed.textContent=new Date(activeSeconds*1000).toISOString().slice(14,19);if(activeSeconds%10===0)saveLiveDraft()},1000);
+ show("session");renderExercise();
+}
+
 function renderHome(){
  updateOfflineStatus();
  setTimeout(renderPlannerHome,0);
  setTimeout(renderReadinessHome,0);
  setTimeout(renderFavoriteQuick,0);
+ setTimeout(renderCustomQuick,0);
  const D=id=>document.getElementById(id);
  D("dadBtn").classList.toggle("active",profile==="dad");
  D("girlBtn").classList.toggle("active",profile==="girl");
@@ -1102,7 +1226,7 @@ function nextPhaseStep(){
  const st=phaseState;if(!st)return;
  st.index++;
  if(st.index>=st.steps.length){
-   if(st.type==="warmup"){beginWorkoutSession(st.day)}
+   if(st.type==="warmup"){if(st.custom)beginCustomWorkoutSession(sessionWorkout);else beginWorkoutSession(st.day)}
    else{finishCooldown()}
    return;
  }
@@ -1831,7 +1955,7 @@ function openSettings(){
  <div class="card pad">
   <button style="width:100%" onclick="if(confirm('Azzero tutti i dati salvati?')){clearAllFitData();modal.classList.add('hidden');renderHome()}">Azzera tutti i dati</button>
  </div>
- <div class="card pad"><p class="note">I dati vengono salvati localmente su questo dispositivo/browser.</p><p class="note"><b>Versione: V20.1 Warm-up Render Fix</b></p></div>`;
+ <div class="card pad"><p class="note">I dati vengono salvati localmente su questo dispositivo/browser.</p><p class="note"><b>Versione: V21 Custom Workout Builder</b></p></div>`;
  modal.classList.remove("hidden")
 }
 
