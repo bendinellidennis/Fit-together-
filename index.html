@@ -504,14 +504,46 @@ function renderExerciseProgress(){
  }).join(""):'<p class="note">Registra le ripetizioni durante gli allenamenti per costruire lo storico esercizi.</p>');
 }
 function completeSet(){
- let e=plans[profile][currentDay].ex[exIndex];
- if(setDone>=e[1])return;
+ const e=plans[profile][currentDay].ex[exIndex];
+ if(setDone>=e[1]) return;
+
+ const repsEl=document.getElementById("repsInput");
+ const noteEl=document.getElementById("noteInput");
+ const repsValue=repsEl ? repsEl.value.trim() : "";
+ const noteValue=noteEl ? noteEl.value.trim() : "";
+
  setDone++;
- repsLog.push({exercise:e[0],set:setDone,reps:repsInput.value||"",note:noteInput.value||"",rpe:selectedRPE||0});
+ repsLog.push({
+   exercise:e[0],
+   set:setDone,
+   reps:repsValue,
+   note:noteValue,
+   rpe:selectedRPE||0
+ });
+
  selectedRPE=0;
- repsInput.value="";noteInput.value="";
- if(setDone<e[1]) showRest(e[3],`Serie ${setDone+1} di ${e[1]} • ${e[0]}`);
- else showRest(Math.min(e[3],60), exIndex<plans[profile][currentDay].ex.length-1?`Prossimo: ${plans[profile][currentDay].ex[exIndex+1][0]}`:"Ultimo recupero");
+
+ if(repsEl) repsEl.value="";
+ if(noteEl) noteEl.value="";
+ document.querySelectorAll("#rpeSelect button").forEach(b=>b.classList.remove("sel"));
+
+ const seriesTextEl=document.getElementById("seriesText");
+ const dotsEl=document.getElementById("setDots");
+ if(seriesTextEl) seriesTextEl.textContent=setDone+"/"+e[1];
+ if(dotsEl){
+   dotsEl.innerHTML=Array.from({length:e[1]},(_,i)=>`<span class="setDot ${i<setDone?'done':i===setDone?'now':''}"></span>`).join("");
+ }
+
+ if(setDone<e[1]){
+   showRest(e[3],`Serie ${setDone+1} di ${e[1]} • ${e[0]}`);
+ }else{
+   showRest(
+     Math.min(e[3],60),
+     exIndex<plans[profile][currentDay].ex.length-1
+       ? `Prossimo: ${plans[profile][currentDay].ex[exIndex+1][0]}`
+       : "Ultimo recupero"
+   );
+ }
 }
 function showRest(sec,nextLabel){
  let wrap=document.createElement("div");wrap.className="restOverlay";wrap.id="restOverlay";
@@ -539,7 +571,7 @@ function exitSession(){if(sessionStarted && confirm("Vuoi uscire senza completar
 function show(id){["home","session","nutrition","progressPage","safety"].forEach(x=>document.getElementById(x).classList.toggle("hidden",x!==id));if(id==="progressPage"){progressTab="overview";renderProgress();}if(id==="home")renderHome()}
 function renderHistory(){let ss=profileSessions().slice().reverse();history.innerHTML=ss.length?ss.map(s=>`<div class="card pad"><b>Allenamento ${s.day}</b><div class="sub">${new Date(s.ts).toLocaleString("it-IT")}</div><div class="chips"><span class="chip">⏱ ${fmtTime(s.durationSec)}</span><span class="chip">🔥 ${s.kcal} kcal stimate</span></div></div>`).join(""):'<p class="note">Ancora nessun allenamento registrato.</p>'}
 function openStats(){let s=stats();sheet.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center"><h2>Statistiche live</h2><button onclick="modal.classList.add('hidden')">✕</button></div><div class="statline"><div class="stat"><b>${s.sessions}</b><small>Allenamenti</small></div><div class="stat"><b>${fmtTime(s.totalSec)}</b><small>Tempo totale</small></div><div class="stat"><b>${s.kcal}</b><small>kcal stimate</small></div><div class="stat"><b>${s.streak}</b><small>Streak</small></div></div><div class="card pad"><b>Settimana</b><p>${s.weekDone}/3 allenamenti completati</p></div>`;modal.classList.remove("hidden")}
-function openSettings(){sheet.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center"><h2>Impostazioni</h2><button onclick="modal.classList.add('hidden')">✕</button></div><div class="card pad"><button style="width:100%" onclick="if(confirm('Azzero tutti i dati salvati?')){localStorage.removeItem('ftData');modal.classList.add('hidden');renderHome()}">Azzera tutti i dati</button></div><div class="card pad"><p class="note">I dati vengono salvati localmente su questo dispositivo/browser.</p><p class="note"><b>Versione: V9 Diario + Progressi Reali</b></p></div>`;modal.classList.remove("hidden")}
+function openSettings(){sheet.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center"><h2>Impostazioni</h2><button onclick="modal.classList.add('hidden')">✕</button></div><div class="card pad"><button style="width:100%" onclick="if(confirm('Azzero tutti i dati salvati?')){localStorage.removeItem('ftData');modal.classList.add('hidden');renderHome()}">Azzera tutti i dati</button></div><div class="card pad"><p class="note">I dati vengono salvati localmente su questo dispositivo/browser.</p><p class="note"><b>Versione: V9.1 Series Save Safari Fix</b></p></div>`;modal.classList.remove("hidden")}
 function closeModal(e){if(e.target===modal)modal.classList.add("hidden")}
 renderHome();
 </script>
