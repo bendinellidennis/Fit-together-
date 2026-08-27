@@ -488,23 +488,56 @@ function renderDiary(){
  }).join(""):'<p class="note">Ancora nessun allenamento nel diario.</p>';
 }
 function renderExerciseProgress(){
- const box=document.getElementById("progressContent"); if(!box)return;
+ const box=document.getElementById("progressContent");
+ if(!box)return;
+
  const names=exerciseNames();
  if(progressExerciseFilter!=="ALL"&&!names.includes(progressExerciseFilter))progressExerciseFilter="ALL";
- const filters=`<div class="filterRow"><button class="${progressExerciseFilter==="ALL"?"primary":""}" onclick="progressExerciseFilter='ALL';renderExerciseProgress()">Tutti</button>${names.map(n=>`<button class="${progressExerciseFilter===n?"primary":""}" onclick="progressExerciseFilter=${JSON.stringify(n)};renderExerciseProgress()">${n}</button>`).join("")}</div>`;
+
+ const filterButtons=[
+   `<button class="${progressExerciseFilter==="ALL"?"primary":""}" data-exfilter="ALL">Tutti</button>`,
+   ...names.map((n,i)=>`<button class="${progressExerciseFilter===n?"primary":""}" data-exfilter-index="${i}">${n}</button>`)
+ ].join("");
+
  const chosen=progressExerciseFilter==="ALL"?names:names.filter(n=>n===progressExerciseFilter);
- box.innerHTML=filters+(chosen.length?chosen.map(n=>{
-   const st=exerciseStats(n), max=Math.max(...st.values,1);
+
+ const content=chosen.length?chosen.map(n=>{
+   const st=exerciseStats(n);
+   const max=Math.max(...st.values,1);
    const spark=st.values.map(v=>`<i style="height:${Math.max(8,Math.round(v/max*100))}%"></i>`).join("");
    const logs=allExerciseLogs().filter(x=>x.exercise===n).slice(-8).reverse();
-   return `<div class="exerciseStat"><div class="row" style="display:flex;justify-content:space-between"><b>${n}</b><span class="badgePR">Record ${st.best}</span></div>
-   <div class="sub">${st.sets} serie registrate · media ${st.avg.toFixed(1)} · miglioramento ${st.improvement>=0?'+':''}${st.improvement}%</div>
-   <div class="spark">${spark||'<span class="note">Nessun dato</span>'}</div>
-   <div style="margin-top:10px">${logs.map(l=>`<div class="diaryMeta">${new Date(l.ts).toLocaleDateString("it-IT")} · Serie ${l.set||"-"} · ${l.reps||"-"} rep${l.rpe?" · RPE "+l.rpe:""}${l.note?" · "+l.note:""}</div>`).join("")}</div>
+   return `<div class="exerciseStat">
+     <div class="row" style="display:flex;justify-content:space-between">
+       <b>${n}</b><span class="badgePR">Record ${st.best}</span>
+     </div>
+     <div class="sub">${st.sets} serie registrate · media ${st.avg.toFixed(1)} · miglioramento ${st.improvement>=0?'+':''}${st.improvement}%</div>${progressExerciseFilter==="ALL"?`<button style="margin-top:8px" data-open-ex="${n}">APRI DETTAGLIO ›</button>`:""}
+     <div class="spark">${spark||'<span class="note">Nessun dato</span>'}</div>
+     <div style="margin-top:10px">
+       ${logs.map(l=>`<div class="diaryMeta">${new Date(l.ts).toLocaleDateString("it-IT")} · Serie ${l.set||"-"} · ${l.reps||"-"} rep${l.rpe?" · RPE "+l.rpe:""}${l.note?" · "+l.note:""}</div>`).join("")}
+     </div>
    </div>`;
- }).join(""):'<p class="note">Registra le ripetizioni durante gli allenamenti per costruire lo storico esercizi.</p>');
-}
+ }).join(""):'<p class="note">Registra le ripetizioni durante gli allenamenti per costruire lo storico esercizi.</p>';
 
+ box.innerHTML=`<div class="filterRow" id="exerciseFilterRow">${filterButtons}</div>${content}`;
+
+ const row=document.getElementById("exerciseFilterRow");
+ if(row){
+   row.onclick=function(ev){
+     const btn=ev.target.closest("button");
+     if(!btn)return;
+
+     if(btn.dataset.openEx){
+       progressExerciseFilter=btn.dataset.openEx;
+     }else if(btn.dataset.exfilter==="ALL"){
+       progressExerciseFilter="ALL";
+     }else if(btn.dataset.exfilterIndex!==undefined){
+       const idx=Number(btn.dataset.exfilterIndex);
+       if(Number.isInteger(idx)&&names[idx]) progressExerciseFilter=names[idx];
+     }
+     renderExerciseProgress();
+   };
+ }
+}
 function ftDraftKey(){ return "ftDraft_"+profile; }
 function saveLiveDraft(){
  const w=plans[profile][currentDay];
@@ -649,7 +682,7 @@ function exitSession(){
 function show(id){["home","session","nutrition","progressPage","safety"].forEach(x=>document.getElementById(x).classList.toggle("hidden",x!==id));if(id==="progressPage"){progressTab="overview";renderProgress();}if(id==="home")renderHome()}
 function renderHistory(){let ss=profileSessions().slice().reverse();history.innerHTML=ss.length?ss.map(s=>`<div class="card pad"><b>Allenamento ${s.day}</b><div class="sub">${new Date(s.ts).toLocaleString("it-IT")}</div><div class="chips"><span class="chip">⏱ ${fmtTime(s.durationSec)}</span><span class="chip">🔥 ${s.kcal} kcal stimate</span></div></div>`).join(""):'<p class="note">Ancora nessun allenamento registrato.</p>'}
 function openStats(){let s=stats();sheet.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center"><h2>Statistiche live</h2><button onclick="modal.classList.add('hidden')">✕</button></div><div class="statline"><div class="stat"><b>${s.sessions}</b><small>Allenamenti</small></div><div class="stat"><b>${fmtTime(s.totalSec)}</b><small>Tempo totale</small></div><div class="stat"><b>${s.kcal}</b><small>kcal stimate</small></div><div class="stat"><b>${s.streak}</b><small>Streak</small></div></div><div class="card pad"><b>Settimana</b><p>${s.weekDone}/3 allenamenti completati</p></div>`;modal.classList.remove("hidden")}
-function openSettings(){sheet.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center"><h2>Impostazioni</h2><button onclick="modal.classList.add('hidden')">✕</button></div><div class="card pad"><button style="width:100%" onclick="if(confirm('Azzero tutti i dati salvati?')){localStorage.removeItem('ftData');modal.classList.add('hidden');renderHome()}">Azzera tutti i dati</button></div><div class="card pad"><p class="note">I dati vengono salvati localmente su questo dispositivo/browser.</p><p class="note"><b>Versione: V9.3 Next Exercise Fix</b></p></div>`;modal.classList.remove("hidden")}
+function openSettings(){sheet.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center"><h2>Impostazioni</h2><button onclick="modal.classList.add('hidden')">✕</button></div><div class="card pad"><button style="width:100%" onclick="if(confirm('Azzero tutti i dati salvati?')){localStorage.removeItem('ftData');modal.classList.add('hidden');renderHome()}">Azzera tutti i dati</button></div><div class="card pad"><p class="note">I dati vengono salvati localmente su questo dispositivo/browser.</p><p class="note"><b>Versione: V9.4 Exercise Detail Fix</b></p></div>`;modal.classList.remove("hidden")}
 function closeModal(e){if(e.target===modal)modal.classList.add("hidden")}
 renderHome();
 </script>
