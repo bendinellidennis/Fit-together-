@@ -83,6 +83,18 @@ main{max-width:720px;padding:14px 14px 108px}
  .workout{min-height:160px}.workout .body{padding:10px}.wtitle{font-size:17px}
 }
 
+
+/* V7 GUIDED TRAINER — HOME V6 UNCHANGED */
+.guideTop{position:sticky;top:0;z-index:20;background:#09111deF;backdrop-filter:blur(14px);border:1px solid #25364c;border-radius:18px;padding:10px 12px;margin:8px 0 12px}
+.guideRow{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.guideProgress{height:7px;background:#1a2634;border-radius:99px;overflow:hidden;margin-top:8px}.guideProgress i{display:block;height:100%;background:linear-gradient(90deg,#7c4dff,#32d17c);width:0}
+.tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:10px 0}.tabs button{font-size:11px;padding:9px 5px}.tabs button.on{background:#754cff}
+.infoPanel{background:#0b141f;border:1px solid #26384e;border-radius:14px;padding:12px;min-height:72px}
+.levels{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}.level{background:#111d2b;border:1px solid #2a3c53;border-radius:13px;padding:10px;font-size:12px}
+.setDots{display:flex;gap:7px;justify-content:center;margin:12px 0}.setDot{width:12px;height:12px;border-radius:50%;background:#263344}.setDot.done{background:#32d17c}.setDot.now{outline:2px solid #9c6aff}
+.bigAction{width:100%;padding:15px;font-size:16px}
+.restOverlay{position:fixed;inset:0;background:#05080df2;z-index:120;display:flex;align-items:center;justify-content:center;padding:18px}.restCard{width:min(430px,100%);text-align:center;background:#0e1723;border:1px solid #304158;border-radius:26px;padding:22px}.restClock{font-size:74px;font-weight:950;font-variant-numeric:tabular-nums;margin:12px 0}.restNext{color:#a9b6c6;font-size:13px}
+
 </style></head>
 <body>
 <main>
@@ -130,8 +142,9 @@ main{max-width:720px;padding:14px 14px 108px}
 </section>
 
 <section id="session" class="hidden">
-  <div class="row" style="display:flex;justify-content:space-between;align-items:center">
-    <button onclick="exitSession()">← Home</button><span class="chip" id="sessionElapsed">00:00</span>
+  <div class="guideTop">
+    <div class="guideRow"><button onclick="exitSession()">← Home</button><b id="guideLabel">Allenamento guidato</b><span class="chip" id="sessionElapsed">00:00</span></div>
+    <div class="guideProgress"><i id="guideBar"></i></div>
   </div>
   <div class="card pad"><div id="sessionTitle" class="wtitle"></div><div class="sub" id="sessionPlace"></div></div>
   <div id="exerciseView"></div>
@@ -220,18 +233,103 @@ function renderHome(){
 }
 function start(day){currentDay=day;exIndex=0;setDone=0;repsLog=[];sessionStarted=Date.now();activeSeconds=0;clearInterval(sessionTicker);sessionTicker=setInterval(()=>{activeSeconds++;sessionElapsed.textContent=new Date(activeSeconds*1000).toISOString().slice(14,19)},1000);show("session");renderExercise()}
 function mediaBlock(type,name){return `<div class="video"><span class="badge">▶️ TUTORIAL VIDEO</span><video src="${media[type]}" autoplay muted loop playsinline controls preload="metadata"></video></div>`}
-function renderExercise(){
- clearInterval(timerInt);let w=plans[profile][currentDay],e=w.ex[exIndex];sessionTitle.textContent=w.name;sessionPlace.textContent=w.place;
- exerciseView.innerHTML=`<div class="card pad"><div class="exerciseHeader">${e[0]}</div><div class="exerciseMeta"><span class="chip">${e[4]}</span><span class="chip">${e[1]} serie</span><span class="chip">${e[2]}</span><span class="chip">${exIndex+1}/${w.ex.length}</span></div>${mediaBlock(e[5],e[0])}<h3>Come farlo</h3><p>${e[6]}</p><h3>Errori da evitare</h3><p class="note">${e[7]}</p></div>
- <div class="card pad"><div style="display:flex;justify-content:space-between"><b>Serie</b><b id="seriesText">0/${e[1]}</b></div><div class="progress"><i id="seriesBar"></i></div><div class="recordBox" style="margin-top:12px"><div><div class="sub">Ripetizioni fatte</div><input id="repsInput" class="input" inputmode="numeric" placeholder="es. 12"></div><div><div class="sub">Note/carico</div><input id="noteInput" class="input" placeholder="es. zaino 8kg"></div></div><button class="green" style="width:100%;margin-top:12px" onclick="completeSet()">✓ SERIE COMPLETATA</button></div>
- <div class="card pad"><h3>Recupero</h3><div class="timer" id="timer">00:00</div><button style="width:100%" onclick="skipTimer()">Salta recupero</button></div>
- <button class="primary" style="width:100%" onclick="nextExercise()">Prossimo esercizio →</button>`;
+
+function exerciseInfo(e){
+ const easy={
+  "Push-up":"Appoggia le mani su un piano stabile rialzato.",
+  "Pike push-up":"Riduci l'inclinazione del busto e l'escursione.",
+  "Push-up stretti":"Eseguilo inclinato su un piano stabile.",
+  "Plank":"Appoggia le ginocchia mantenendo addome attivo.",
+  "Dead bug":"Muovi una sola gamba alla volta.",
+  "Squat":"Usa una sedia come riferimento e riduci la profondità.",
+  "Bulgarian split squat":"Passa a un normale affondo indietro.",
+  "Affondi indietro":"Tieni un appoggio stabile vicino.",
+  "Hip bridge":"Riduci l'escursione mantenendo la contrazione.",
+  "Calf raise":"Usa entrambe le gambe e un appoggio.",
+  "Squat tempo":"Esegui squat normale senza tempo lento.",
+  "Affondi camminati":"Passa ad affondi indietro sul posto.",
+  "Rematore con zaino":"Riduci il peso nello zaino.",
+  "Push-up inclinato o completo":"Aumenta l'altezza dell'appoggio.",
+  "Squat pausa":"Riduci la durata della pausa.",
+  "Affondi":"Tieni un appoggio stabile vicino.",
+  "Rematore con zaino leggero":"Usa uno zaino ancora più leggero."
+ };
+ const hard={
+  "Push-up":"Rallenta la discesa a 3 secondi o aggiungi una pausa in basso.",
+  "Pike push-up":"Porta i piedi più vicini alle mani mantenendo controllo.",
+  "Push-up stretti":"Aggiungi una pausa breve in basso.",
+  "Plank":"Aumenta gradualmente il tempo senza perdere la posizione.",
+  "Dead bug":"Estendi completamente braccio e gamba opposti più lentamente.",
+  "Squat":"Usa tempo 3-1-1 oppure uno zaino leggero per l'adulto.",
+  "Bulgarian split squat":"Aumenta lentamente ripetizioni o controllo del tempo.",
+  "Affondi indietro":"Aggiungi una pausa controllata in basso.",
+  "Hip bridge":"Passa alla variante a una gamba solo se stabile.",
+  "Calf raise":"Esegui lentamente a una gamba con appoggio.",
+  "Squat tempo":"Aggiungi una pausa di 1 secondo in basso.",
+  "Affondi camminati":"Allunga il controllo eccentrico, non la velocità.",
+  "Rematore con zaino":"Per l'adulto, aumenta gradualmente il carico mantenendo tecnica.",
+  "Push-up inclinato o completo":"Riduci l'altezza dell'appoggio fino alla variante completa.",
+  "Squat pausa":"Allunga leggermente la pausa mantenendo tecnica.",
+  "Affondi":"Aumenta gradualmente le ripetizioni mantenendo equilibrio.",
+  "Rematore con zaino leggero":"Aumenta prima le ripetizioni, non il carico."
+ };
+ return {easy:easy[e[0]]||"Riduci ripetizioni o escursione mantenendo tecnica pulita.",hard:hard[e[0]]||"Aumenta gradualmente controllo o ripetizioni senza perdere tecnica."};
 }
-function completeSet(){let e=plans[profile][currentDay].ex[exIndex];if(setDone<e[1])setDone++;seriesText.textContent=setDone+"/"+e[1];seriesBar.style.width=(setDone/e[1]*100)+"%";repsLog.push({exercise:e[0],set:setDone,reps:repsInput.value||"",note:noteInput.value||""});repsInput.value="";noteInput.value="";startTimer(e[3])}
-function startTimer(s){clearInterval(timerInt);timer.textContent=formatClock(s);timerInt=setInterval(()=>{s--;timer.textContent=formatClock(Math.max(0,s));if(s<=0){clearInterval(timerInt);navigator.vibrate?.(200)}},1000)}
-function formatClock(s){return String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0")}
-function skipTimer(){clearInterval(timerInt);timer.textContent="00:00"}
-function nextExercise(){let w=plans[profile][currentDay];if(exIndex<w.ex.length-1){exIndex++;setDone=0;renderExercise()}else finishSession()}
+function renderExercise(){
+ clearInterval(timerInt);
+ let w=plans[profile][currentDay],e=w.ex[exIndex],inf=exerciseInfo(e);
+ sessionTitle.textContent=w.name;sessionPlace.textContent=w.place;
+ let total=w.ex.length, pct=Math.round(exIndex/total*100); guideBar.style.width=pct+"%";guideLabel.textContent=`Esercizio ${exIndex+1} di ${total}`;
+ let dots=Array.from({length:e[1]},(_,i)=>`<span class="setDot ${i<setDone?'done':i===setDone?'now':''}"></span>`).join("");
+ exerciseView.innerHTML=`<div class="card pad">
+ <div class="exerciseHeader">${e[0]}</div>
+ <div class="exerciseMeta"><span class="chip">${e[4]}</span><span class="chip">${e[1]} serie</span><span class="chip">${e[2]}</span></div>
+ ${mediaBlock(e[5],e[0])}
+ <div class="tabs"><button id="tabHow" class="on" onclick="showTip('how')">COME FARLO</button><button id="tabErr" onclick="showTip('err')">ERRORI</button><button id="tabMus" onclick="showTip('mus')">MUSCOLI</button></div>
+ <div id="tipPanel" class="infoPanel">${e[6]}</div>
+ <div class="levels"><div class="level"><b>⬇️ PIÙ FACILE</b><br>${inf.easy}</div><div class="level"><b>⬆️ PIÙ DIFFICILE</b><br>${inf.hard}</div></div>
+ </div>
+ <div class="card pad">
+ <div class="guideRow"><b>Serie in corso</b><b id="seriesText">${setDone}/${e[1]}</b></div>
+ <div class="setDots" id="setDots">${dots}</div>
+ <div class="recordBox"><div><div class="sub">Ripetizioni fatte</div><input id="repsInput" class="input" inputmode="numeric" placeholder="es. 12"></div><div><div class="sub">Note / carico</div><input id="noteInput" class="input" placeholder="opzionale"></div></div>
+ <button class="green bigAction" style="margin-top:12px" onclick="completeSet()">✓ SERIE COMPLETATA</button>
+ </div>`;
+ window.currentTip=e;
+}
+function showTip(which){
+ let e=window.currentTip;if(!e)return;
+ tabHow.classList.toggle("on",which==="how");tabErr.classList.toggle("on",which==="err");tabMus.classList.toggle("on",which==="mus");
+ tipPanel.innerHTML=which==="how"?e[6]:which==="err"?e[7]:`Muscoli principali: <b>${e[4]}</b>. Concentrati sul controllo del movimento, non sulla velocità.`;
+}
+function completeSet(){
+ let e=plans[profile][currentDay].ex[exIndex];
+ if(setDone>=e[1])return;
+ setDone++;
+ repsLog.push({exercise:e[0],set:setDone,reps:repsInput.value||"",note:noteInput.value||""});
+ if(setDone<e[1]) showRest(e[3],`Serie ${setDone+1} di ${e[1]} • ${e[0]}`);
+ else showRest(Math.min(e[3],60), exIndex<plans[profile][currentDay].ex.length-1?`Prossimo: ${plans[profile][currentDay].ex[exIndex+1][0]}`:"Ultimo recupero");
+}
+function showRest(sec,nextLabel){
+ let wrap=document.createElement("div");wrap.className="restOverlay";wrap.id="restOverlay";
+ wrap.innerHTML=`<div class="restCard"><div class="sub">RECUPERO</div><div class="restClock" id="restClock">${formatClock(sec)}</div><div class="restNext">${nextLabel}</div><button class="primary bigAction" style="margin-top:18px" onclick="finishRest()">SALTA RECUPERO ›</button></div>`;
+ document.body.appendChild(wrap); window.restLeft=sec;clearInterval(timerInt);
+ timerInt=setInterval(()=>{window.restLeft--;let c=document.getElementById("restClock");if(c)c.textContent=formatClock(Math.max(0,window.restLeft));if(window.restLeft<=0){clearInterval(timerInt);navigator.vibrate?.([150,80,150]);finishRest()}},1000);
+}
+function finishRest(){
+ clearInterval(timerInt);document.getElementById("restOverlay")?.remove();
+ let e=plans[profile][currentDay].ex[exIndex];
+ if(setDone>=e[1]){
+   if(exIndex<plans[profile][currentDay].ex.length-1){exIndex++;setDone=0;renderExercise()}
+   else finishSession();
+ }else renderExercise();
+}
+function startTimer(s){showRest(s,"Preparati alla prossima serie")}
+function skipTimer(){finishRest()}
+function nextExercise(){
+ let w=plans[profile][currentDay];
+ if(exIndex<w.ex.length-1){exIndex++;setDone=0;renderExercise()}else finishSession();
+}
 function kcalEstimate(sec){let kg=profile==="dad"?72:53;let met=5.5;return Math.round(met*3.5*kg/200*(sec/60))}
 function finishSession(){clearInterval(sessionTicker);clearInterval(timerInt);let sec=Math.max(60,activeSeconds),d=db();d.sessions.push({profile,day:currentDay,ts:Date.now(),durationSec:sec,kcal:kcalEstimate(sec),logs:repsLog});saveDB(d);alert("Allenamento salvato!");show("home");renderHome()}
 function exitSession(){if(sessionStarted && confirm("Vuoi uscire senza completare l'allenamento?")){clearInterval(sessionTicker);clearInterval(timerInt);sessionStarted=null;show("home")}}
