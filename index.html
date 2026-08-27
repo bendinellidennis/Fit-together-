@@ -325,6 +325,14 @@ main{max-width:720px;padding:14px 14px 108px}
 .scheduleGrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
 .scheduleBadge{display:inline-block;background:#3d3269;border-radius:999px;padding:4px 7px;font-size:10px;font-weight:900}
 
+
+/* V24 SMART EXERCISE SWAP */
+.swapBox{background:linear-gradient(145deg,#101827,#19142c);border:1px solid #5d47a7;border-radius:16px;padding:12px;margin:10px 0}
+.swapGrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+.swapOption{background:#0d1723;border:1px solid #28384e;border-radius:13px;padding:10px}
+.swapOption b{display:block}.swapOption .sub{font-size:10px;margin-top:3px}
+.swapReason{font-size:11px;color:#aab6c6;line-height:1.4;margin-top:5px}
+
 </style><link rel="manifest" href="manifest.webmanifest">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -599,6 +607,23 @@ function startTogether(day){
  show("together");renderTogetherExercise();
 }
 function tcEx(person){const st=togetherState,w=person==="dad"?st.dadWorkout:st.girlWorkout;return st.exIndex<w.ex.length?w.ex[st.exIndex]:null}
+
+function openTogetherSwap(){
+ const st=togetherState;if(!st)return;
+ const who=st.turn,w=who==="dad"?st.dadWorkout:st.girlWorkout,e=w.ex[st.exIndex];
+ const prevProfile=profile;
+ const alts=smartAlternatives(e);
+ sheet.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center"><h2>🔄 Sostituisci esercizio</h2><button onclick="modal.classList.add('hidden')">✕</button></div><div class="swapBox"><b>${who==="dad"?"TU":"FIGLIA"} · ${e[0]}</b><div class="sub">${e[4]}</div></div><div class="swapGrid">${alts.map((x,i)=>`<button class="swapOption" onclick="applyTogetherSwap(${i})"><b>${x.e[0]}</b><span class="sub">${x.e[4]}</span></button>`).join("")}</div>`;
+ window._togetherSwapAlternatives=alts.map(x=>x.e);
+ modal.classList.remove("hidden");
+}
+function applyTogetherSwap(i){
+ const st=togetherState,alt=window._togetherSwapAlternatives?.[i];if(!st||!alt)return;
+ const who=st.turn,w=who==="dad"?st.dadWorkout:st.girlWorkout,old=w.ex[st.exIndex],rep=alt.slice();
+ rep[1]=old[1];rep[2]=old[2];w.ex[st.exIndex]=rep;
+ modal.classList.add("hidden");saveTogetherDraft();renderTogetherExercise();
+}
+
 function renderTogetherExercise(){
  const st=togetherState;if(!st)return;
  const max=Math.max(st.dadWorkout.ex.length,st.girlWorkout.ex.length),dadE=tcEx("dad"),girlE=tcEx("girl");
@@ -610,7 +635,7 @@ function renderTogetherExercise(){
  const who=st.turn,e=tcEx(who);if(!e){switchTogether();return}
  const whoLabel=who==="dad"?"👨 TU":"👧 FIGLIA",setsDone=who==="dad"?st.dadSet:st.girlSet,info=exerciseInfo(e);
  speakCoach(`Tocca a ${who==="dad"?"te":"tua figlia"}. ${e[0]}.`);
- togetherExerciseView.innerHTML=`<div class="card pad"><span class="turnBadge">TOCCA A ${whoLabel}</span><div class="exerciseHeader" style="margin-top:8px">${e[0]}</div><div class="exerciseMeta"><span class="chip">${e[4]}</span><span class="chip">${e[1]} serie</span><span class="chip">${e[2]}</span></div>${ftSmartBox(e)}${mediaBlock(e[5],e[0])}<div class="infoPanel">${e[6]}</div><div class="levels"><div class="level"><b>⬇️ PIÙ FACILE</b><br>${info.easy}</div><div class="level"><b>⬆️ PIÙ DIFFICILE</b><br>${info.hard}</div></div></div>
+ togetherExerciseView.innerHTML=`<div class="card pad"><span class="turnBadge">TOCCA A ${whoLabel}</span><div class="exerciseHeader" style="margin-top:8px">${e[0]}</div><div class="exerciseMeta"><span class="chip">${e[4]}</span><span class="chip">${e[1]} serie</span><span class="chip">${e[2]}</span></div>${ftSmartBox(e)}<button class="outline" style="width:100%;margin:8px 0" onclick="openTogetherSwap()">🔄 SOSTITUISCI ESERCIZIO</button>${mediaBlock(e[5],e[0])}<div class="infoPanel">${e[6]}</div><div class="levels"><div class="level"><b>⬇️ PIÙ FACILE</b><br>${info.easy}</div><div class="level"><b>⬆️ PIÙ DIFFICILE</b><br>${info.hard}</div></div></div>
  <div class="card pad"><div class="guideRow"><b>Serie di ${whoLabel}</b><b>${setsDone}/${e[1]}</b></div><div class="recordBox" style="margin-top:10px"><div><div class="sub">Ripetizioni</div><input id="togetherReps" class="input" inputmode="numeric" placeholder="es. 12"></div><div><div class="sub">Note / carico</div><input id="togetherNote" class="input" placeholder="opzionale"></div></div><div class="rpeSelect" id="togetherRpe"><button onclick="pickTogetherRPE(1,this)">🙂</button><button onclick="pickTogetherRPE(2,this)">😊</button><button onclick="pickTogetherRPE(3,this)">😐</button><button onclick="pickTogetherRPE(4,this)">😓</button><button onclick="pickTogetherRPE(5,this)">🥵</button></div><button class="green bigAction" style="margin-top:12px" onclick="completeTogetherSet()">✓ SERIE COMPLETATA</button></div>`;
  st.currentRPE=0;
 }
@@ -1483,6 +1508,77 @@ function ftSmartBox(e){
   return `<div class="smartBox"><div class="smartHead"><span>🧠 Progressione intelligente</span><span class="smartBadge">${a.badge}</span></div><div class="smartTarget">${a.target}</div><div class="smartText">${a.text}</div></div>`;
 }
 
+
+function exerciseTags(e){
+ const txt=(e[0]+" "+e[4]).toLowerCase();
+ const tags=[];
+ if(/petto|push|spalle|tricipiti|upper/.test(txt))tags.push("upper");
+ if(/schiena|bicipiti|rematore|row/.test(txt))tags.push("back");
+ if(/gambe|glutei|quadricipiti|polpacci|affondo|squat|hinge|stacco/.test(txt))tags.push("legs");
+ if(/core|plank|dead bug|addome/.test(txt))tags.push("core");
+ if(/cardio|burpee|total body/.test(txt))tags.push("cardio");
+ return tags.length?tags:["full"];
+}
+function allCandidateExercises(){
+ const seen=new Map();
+ Object.values(plans[profile]).forEach(w=>w.ex.forEach(e=>{if(!seen.has(e[0]))seen.set(e[0],e)}));
+ customWorkouts().forEach(w=>w.ex.forEach(e=>{if(!seen.has(e[0]))seen.set(e[0],e)}));
+ return [...seen.values()];
+}
+function swapCompatibility(current,candidate){
+ if(!current||!candidate||current[0]===candidate[0])return -999;
+ const a=exerciseTags(current),b=exerciseTags(candidate);
+ let score=a.filter(x=>b.includes(x)).length*20;
+ const curName=current[0].toLowerCase(),candName=candidate[0].toLowerCase();
+
+ if(adaptiveMode.enabled&&adaptiveMode.equipment==="Nessuna"){
+   if(/zaino|bottigl|carico|rematore/.test(candName))score-=15;
+   else score+=4;
+ }
+ if(adaptiveMode.enabled&&adaptiveMode.location==="Mare"){
+   if(/zaino|panca|supporto/.test(candName))score-=8;
+   else score+=3;
+ }
+ if(profile==="girl" && /stacco|burpee|bulgarian/.test(candName))score-=3;
+ if(curName.includes("push")&&candName.includes("push"))score+=8;
+ if(curName.includes("squat")&&candName.includes("squat"))score+=8;
+ if(curName.includes("plank")&&candName.includes("plank"))score+=8;
+ return score;
+}
+function smartAlternatives(e){
+ return allCandidateExercises()
+   .map(x=>({e:x,score:swapCompatibility(e,x)}))
+   .filter(x=>x.score>-20)
+   .sort((a,b)=>b.score-a.score)
+   .slice(0,6);
+}
+function openExerciseSwap(){
+ const w=sessionWorkout||plans[profile][currentDay],current=w.ex[exIndex];
+ const alts=smartAlternatives(current);
+ sheet.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center"><h2>🔄 Sostituisci esercizio</h2><button onclick="modal.classList.add('hidden')">✕</button></div>
+ <div class="swapBox"><b>Attuale: ${current[0]}</b><div class="sub">${current[4]} · ${current[1]} serie · ${current[2]}</div><div class="swapReason">Scegli un'alternativa. Le serie già completate restano salvate; la sostituzione vale solo per questa sessione.</div></div>
+ <div class="swapGrid">${alts.length?alts.map((x,i)=>`<button class="swapOption" onclick="applyExerciseSwap(${i})"><b>${x.e[0]}</b><span class="sub">${x.e[4]}</span></button>`).join(""):"<div class='note'>Nessuna alternativa adatta trovata.</div>"}</div>`;
+ window._swapAlternatives=alts.map(x=>x.e);
+ modal.classList.remove("hidden");
+}
+function applyExerciseSwap(i){
+ const alt=window._swapAlternatives?.[i];
+ if(!alt)return;
+ const w=sessionWorkout||plans[profile][currentDay],old=w.ex[exIndex];
+ const replacement=alt.slice();
+
+ // Preserve current workout target volume where reasonable.
+ replacement[1]=old[1];
+ replacement[2]=old[2];
+
+ w.ex[exIndex]=replacement;
+ sessionWorkout=w;
+ saveLiveDraft();
+ modal.classList.add("hidden");
+ renderExercise();
+ speakCoach?.(`Esercizio sostituito con ${replacement[0]}.`);
+}
+
 function renderExercise(){
  clearInterval(timerInt);
  let w=plans[profile][currentDay],e=w.ex[exIndex],inf=exerciseInfo(e);
@@ -1492,7 +1588,7 @@ function renderExercise(){
  exerciseView.innerHTML=`<div class="card pad">
  <div class="exerciseHeader">${e[0]}</div>
  <div class="exerciseMeta"><span class="chip">${e[4]}</span><span class="chip">${e[1]} serie</span><span class="chip">${e[2]}</span></div>
- ${ftSmartBox(e)}${mediaBlock(e[5],e[0])}
+ ${ftSmartBox(e)}<button class="outline" style="width:100%;margin:8px 0" onclick="openExerciseSwap()">🔄 SOSTITUISCI ESERCIZIO</button>${mediaBlock(e[5],e[0])}
  <div class="tabs"><button id="tabHow" class="on" onclick="showTip('how')">COME FARLO</button><button id="tabErr" onclick="showTip('err')">ERRORI</button><button id="tabMus" onclick="showTip('mus')">MUSCOLI</button></div>
  <div id="tipPanel" class="infoPanel">${e[6]}</div>
  <div class="levels"><div class="level"><b>⬇️ PIÙ FACILE</b><br>${inf.easy}</div><div class="level"><b>⬆️ PIÙ DIFFICILE</b><br>${inf.hard}</div></div>
@@ -2161,7 +2257,7 @@ function openSettings(){
  <div class="card pad">
   <button style="width:100%" onclick="if(confirm('Azzero tutti i dati salvati?')){clearAllFitData();modal.classList.add('hidden');renderHome()}">Azzera tutti i dati</button>
  </div>
- <div class="card pad"><p class="note">I dati vengono salvati localmente su questo dispositivo/browser.</p><p class="note"><b>Versione: V23 Sessioni Programmate</b></p></div>`;
+ <div class="card pad"><p class="note">I dati vengono salvati localmente su questo dispositivo/browser.</p><p class="note"><b>Versione: V24 Smart Exercise Swap</b></p></div>`;
  modal.classList.remove("hidden")
 }
 
