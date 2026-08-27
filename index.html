@@ -182,6 +182,25 @@ main{max-width:720px;padding:14px 14px 108px}
 .offlineBadge{display:inline-flex;align-items:center;gap:6px;background:#0d1723;border:1px solid #2a3a50;border-radius:999px;padding:6px 9px;font-size:10px;color:#b9c5d4}
 .offlineBadge.ready{border-color:#2f8e55;color:#baffd0}.offlineBadge.off{border-color:#8f5a35;color:#ffd0a7}
 .offlineBox{background:linear-gradient(145deg,#0e1724,#15182b);border:1px solid #4d4f8a;border-radius:16px;padding:13px;margin-top:10px}
+
+/* V14.1 HEADER POLISH */
+.topbar{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:start;gap:8px}
+.topbar>div:first-child{min-width:0}
+.brand{white-space:nowrap;font-size:23px;line-height:1.05}
+.topbar .sub{max-width:100%;font-size:11px;line-height:1.25}
+.icons{display:grid;grid-template-columns:repeat(4,auto);gap:5px;align-items:start}
+.mini{min-width:44px;padding:7px 8px;border-radius:13px}
+.offlineBadge{width:44px;height:44px;min-width:44px;padding:0;border-radius:50%;display:grid;place-items:center;font-size:0;line-height:1;text-align:center}
+.offlineBadge::before{content:"☁️";font-size:18px}
+.offlineBadge.ready::before{content:"✅";font-size:18px}
+.offlineBadge.off::before{content:"📴";font-size:18px}
+@media(max-width:430px){
+ .brand{font-size:21px}
+ .icons{gap:4px}
+ .mini{min-width:42px;padding:7px 6px}
+ .offlineBadge{width:42px;height:42px;min-width:42px}
+}
+
 </style><link rel="manifest" href="manifest.webmanifest">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -194,7 +213,7 @@ main{max-width:720px;padding:14px 14px 108px}
   <div class="icons">
     <button class="mini" onclick="openStats()">🔥 <span id="topStreak">0</span><small style="display:block;font-size:8px;color:#9ca9bb">STREAK</small></button>
     <button class="mini" onclick="openStats()">📅 <span id="topSessions">0</span><small style="display:block;font-size:8px;color:#9ca9bb">ALLEN.</small></button>
-    <button class="mini" onclick="openSettings()">⚙️</button><span id="offlineStatus" class="offlineBadge">☁️ ONLINE</span>
+    <button class="mini" onclick="openSettings()">⚙️</button><span id="offlineStatus" class="offlineBadge" title="Online" aria-label="Stato connessione: online">☁️ ONLINE</span>
   </div>
 </div>
 
@@ -494,9 +513,22 @@ function adaptiveWorkout(base){
 
 function updateOfflineStatus(){
  const el=document.getElementById("offlineStatus");if(!el)return;
- if(!navigator.onLine){el.textContent="📴 OFFLINE";el.classList.add("off");el.classList.remove("ready")}
- else if(localStorage.getItem("ftOfflineReady")==="1"){el.textContent="✅ OFFLINE PRONTO";el.classList.add("ready");el.classList.remove("off")}
- else{el.textContent="☁️ ONLINE";el.classList.remove("ready","off")}
+ if(!navigator.onLine){
+   el.textContent="📴 OFFLINE";
+   el.title="Offline";
+   el.setAttribute("aria-label","Stato connessione: offline");
+   el.classList.add("off");el.classList.remove("ready");
+ }else if(localStorage.getItem("ftOfflineReady")==="1"){
+   el.textContent="✅ OFFLINE PRONTO";
+   el.title="Offline pronto";
+   el.setAttribute("aria-label","Offline pronto");
+   el.classList.add("ready");el.classList.remove("off");
+ }else{
+   el.textContent="☁️ ONLINE";
+   el.title="Online";
+   el.setAttribute("aria-label","Stato connessione: online");
+   el.classList.remove("ready","off");
+ }
 }
 async function prepareOffline(){
  try{
@@ -1129,7 +1161,7 @@ function openSettings(){
  sheet.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center"><h2>Impostazioni</h2><button onclick="modal.classList.add('hidden')">✕</button></div>
  <div class="offlineBox"><h3>📴 Modalità Offline</h3><p class="note">L'app viene salvata sul dispositivo. I tutorial video che hai già aperto vengono memorizzati progressivamente per poterli rivedere anche senza rete.</p><div class="row" style="display:flex;justify-content:space-between;align-items:center"><span id="offlineSettingsState">${cacheState?"✅ App offline pronta":"⏳ Preparazione offline"}</span><button class="primary" onclick="prepareOffline()">PREPARA OFFLINE</button></div></div>
  <div class="card pad"><button style="width:100%" onclick="if(confirm('Azzero tutti i dati salvati?')){localStorage.removeItem('ftData');modal.classList.add('hidden');renderHome()}">Azzera tutti i dati</button></div>
- <div class="card pad"><p class="note">I dati vengono salvati localmente su questo dispositivo/browser.</p><p class="note"><b>Versione: V14 Offline PWA</b></p></div>`;
+ <div class="card pad"><p class="note">I dati vengono salvati localmente su questo dispositivo/browser.</p><p class="note"><b>Versione: V14.1 Header Polish</b></p></div>`;
  modal.classList.remove("hidden")
 }
 
