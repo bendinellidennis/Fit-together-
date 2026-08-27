@@ -573,6 +573,11 @@ function stats(){
  let weekDone=new Set(ss.filter(s=>s.ts>=monday.getTime()).map(s=>s.day)).size;let target=plannerDb().target||3;
  return {sessions:ss.length,totalSec,kcal:Math.round(kcal),streak,weekDone,target,pct:Math.min(100,Math.round(weekDone/target*100))}
 }
+function formatClock(sec){
+ sec=Math.max(0,Math.floor(Number(sec)||0));
+ const m=Math.floor(sec/60),s=sec%60;
+ return String(m).padStart(2,"0")+":"+String(s).padStart(2,"0");
+}
 function fmtTime(sec){if(sec<3600)return Math.round(sec/60)+"m";return Math.floor(sec/3600)+"h "+Math.round((sec%3600)/60)+"m"}
 
 let adaptiveMode=JSON.parse(localStorage.getItem("ftAdaptive")||'{"enabled":false,"location":"Casa","minutes":45,"equipment":"Nessuna"}');
@@ -1826,7 +1831,7 @@ function openSettings(){
  <div class="card pad">
   <button style="width:100%" onclick="if(confirm('Azzero tutti i dati salvati?')){clearAllFitData();modal.classList.add('hidden');renderHome()}">Azzera tutti i dati</button>
  </div>
- <div class="card pad"><p class="note">I dati vengono salvati localmente su questo dispositivo/browser.</p><p class="note"><b>Versione: V20 Warm-up & Cool-down</b></p></div>`;
+ <div class="card pad"><p class="note">I dati vengono salvati localmente su questo dispositivo/browser.</p><p class="note"><b>Versione: V20.1 Warm-up Render Fix</b></p></div>`;
  modal.classList.remove("hidden")
 }
 
