@@ -134,6 +134,13 @@ main{max-width:720px;padding:14px 14px 108px}
 .adaptGrid button.sel{background:linear-gradient(135deg,#6f4cff,#9c43ff)}
 .adaptLabel{font-size:11px;color:#9eaabc;margin-top:10px;margin-bottom:5px}
 .adaptSummary{background:#0c1520;border:1px solid #25354b;border-radius:14px;padding:11px;margin-top:10px;font-size:12px;line-height:1.45}
+
+/* V11 ALLENATI INSIEME */
+.togetherBox{background:linear-gradient(145deg,#111827,#221431);border:1px solid #684bb4;border-radius:18px;padding:14px;margin:12px 0}
+.togetherProfiles{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.togetherPerson{background:#0d1723;border:1px solid #28384e;border-radius:14px;padding:10px;text-align:center}
+.togetherPerson.active{outline:2px solid #8a5cff;box-shadow:0 0 22px #8b5cff2b}
+.turnBadge{display:inline-block;background:#7a4fff;border-radius:999px;padding:5px 8px;font-size:10px;font-weight:900}
 </style></head>
 <body>
 <main>
@@ -178,6 +185,13 @@ main{max-width:720px;padding:14px 14px 108px}
 <div class="card pad week"><b>📅 Questa settimana</b><div class="weekbar"><i id="weekBar"></i></div><b id="weekText">0/3</b></div>
 
 
+
+<div class="togetherBox">
+ <div class="row" style="display:flex;justify-content:space-between;align-items:center">
+  <div><b>👨‍👧 Allenati Insieme</b><div class="sub">Un solo telefono, turni alternati, dati separati.</div></div>
+  <button class="primary" onclick="openTogetherPicker()">INIZIA</button>
+ </div>
+</div>
 <div class="adaptBox">
   <div class="row" style="display:flex;justify-content:space-between;align-items:center">
     <div><b>⚡ Allenamento adattivo</b><div class="sub">Adatta A/B/C a dove sei e al tempo che hai.</div></div>
@@ -218,6 +232,14 @@ main{max-width:720px;padding:14px 14px 108px}
   <div id="exerciseView"></div>
 </section>
 
+
+<section id="together" class="hidden">
+ <div class="guideTop"><div class="guideRow"><button onclick="exitTogether()">← Home</button><b>Allenati Insieme</b><span class="chip" id="togetherElapsed">00:00</span></div><div class="guideProgress"><i id="togetherBar"></i></div></div>
+ <div class="card pad"><div class="turnTitle" id="togetherWorkoutTitle"></div><div class="sub" id="togetherWorkoutPlace"></div>
+  <div class="togetherProfiles"><div id="turnDad" class="togetherPerson"><b>👨 TU</b><div class="sub" id="turnDadStatus"></div></div><div id="turnGirl" class="togetherPerson"><b>👧 FIGLIA</b><div class="sub" id="turnGirlStatus"></div></div></div>
+ </div>
+ <div id="togetherExerciseView"></div>
+</section>
 <section id="nutrition" class="hidden">
 <div class="card pad"><h2>🥗 Nutrizione & recupero</h2><p class="note">La base resta alimentazione completa, acqua e sonno. Gli integratori sono opzionali.</p></div>
 <div class="card pad live"><h3>Per te</h3><p><b>Proteine:</b> shake solo per comodità se serve. <b>Creatina monoidrato:</b> molto studiata negli adulti per forza e sforzi intensi ripetuti; non è obbligatoria. Con patologie o farmaci, verifica prima con medico/farmacista.</p><p><b>BCAA:</b> normalmente aggiungono poco se le proteine totali sono già adeguate.</p></div>
@@ -288,10 +310,63 @@ C:{name:"C • Mare Movimento",place:"Mare",img:"data:image/jpeg;base64,/9j/4AAQ
 ["Affondi",3,"8/lato",60,"Gambe • equilibrio","lunge","Passi stabili sulla sabbia compatta.","Evita superfici irregolari."],
 ["Plank",3,"20–40 sec",45,"Core","plank","Corpo in linea.","Stop quando perdi la posizione."]]}
 ,D:{name:"Upper Body & Posture",place:"Casa",mins:35,desc:"Parte alta e postura con tecnica controllata.",img:"https://images.pexels.com/photos/7900673/pexels-photo-7900673.jpeg?auto=compress&cs=tinysrgb&w=1200",ex:[["Shoulder press leggero",3,"8–12",60,"Spalle • tricipiti","shoulderpress","Usa bottiglie leggere, addome attivo e movimento lento sopra la testa.","Niente carichi elevati e niente compensi con la schiena."],["Push-up inclinato o completo",3,"8–12",60,"Petto • braccia","push","Scegli la variante che mantiene tecnica pulita.","Niente cedimento forzato."],["Rematore leggero",3,"10–12",60,"Schiena • braccia","row","Usa uno zaino molto leggero o bottiglie; tira verso il fianco lentamente.","Non usare slancio e non aumentare il carico troppo presto."],["Plank",3,"35–60 sec",60,"Core","plank","Addome e glutei attivi, corpo in linea.","Non lasciare cadere il bacino."]]},E:{name:"Glutes & Legs",place:"Casa / Mare",mins:40,desc:"Gambe, glutei e tecnica dell'anca.",img:"https://images.pexels.com/photos/8846119/pexels-photo-8846119.jpeg?auto=compress&cs=tinysrgb&w=1200",ex:[["Hip hinge tecnico",3,"10–12",60,"Glutei • posteriori","deadlift","Impara il movimento dell'anca con carico minimo o nullo: bacino indietro e schiena neutra.","Non inseguire il peso e non arrotondare la schiena."],["Affondo in avanti tecnico",3,"8/lato",60,"Gambe • equilibrio","lunge","Passo controllato, ginocchio stabile e ritorno senza fretta.","Usa un appoggio se serve e non forzare la profondità."],["Squat",4,"12–20",75,"Gambe • glutei","squat","Piedi stabili, ginocchia seguono le punte, discesa controllata.","Ginocchia verso l'interno o talloni sollevati."],["Calf raise",4,"15–25",45,"Polpacci","squat","Sali lentamente sulle punte e torna giù completo.","Non rimbalzare."]]},F:{name:"Athletic Express",place:"Casa",mins:25,desc:"Seduta breve e atletica con nuovi movimenti guidati.",img:"https://images.pexels.com/photos/8173441/pexels-photo-8173441.jpeg?auto=compress&cs=tinysrgb&w=1200",ex:[["Burpee tecnico",3,"5–8",60,"Total body • coordinazione","burpee","Esegui ogni fase separatamente e in controllo; il salto finale è opzionale.","Non accelerare se la tecnica peggiora."],["Shoulder press leggero",3,"8–12",60,"Spalle • tricipiti","shoulderpress","Usa bottiglie leggere, addome attivo e movimento lento sopra la testa.","Niente carichi elevati e niente compensi con la schiena."],["Squat",4,"12–20",75,"Gambe • glutei","squat","Piedi stabili, ginocchia seguono le punte, discesa controllata.","Ginocchia verso l'interno o talloni sollevati."],["Plank",3,"35–60 sec",60,"Core","plank","Addome e glutei attivi, corpo in linea.","Non lasciare cadere il bacino."]]},G:{name:"Beach Athletic",place:"Mare",mins:35,desc:"Allenamento atletico e controllato sulla sabbia compatta.",img:"https://images.pexels.com/photos/12199356/pexels-photo-12199356.jpeg?auto=compress&cs=tinysrgb&w=1200",ex:[["Burpee tecnico",3,"5–8",60,"Total body • coordinazione","burpee","Esegui ogni fase separatamente e in controllo; il salto finale è opzionale.","Non accelerare se la tecnica peggiora."],["Affondo in avanti tecnico",3,"8/lato",60,"Gambe • equilibrio","lunge","Passo controllato, ginocchio stabile e ritorno senza fretta.","Usa un appoggio se serve e non forzare la profondità."],["Push-up inclinato o completo",3,"8–12",60,"Petto • braccia","push","Scegli la variante che mantiene tecnica pulita.","Niente cedimento forzato."],["Squat pausa",3,"10–12",60,"Gambe","squat","Pausa breve in basso e risali controllata.","Nessun rimbalzo."]]},H:{name:"Strength & Technique",place:"Casa",mins:45,desc:"Forza generale con priorit\u00e0 assoluta alla tecnica.",img:"https://images.pexels.com/photos/14623707/pexels-photo-14623707.jpeg?auto=compress&cs=tinysrgb&w=1200",ex:[["Hip hinge tecnico",3,"10–12",60,"Glutei • posteriori","deadlift","Impara il movimento dell'anca con carico minimo o nullo: bacino indietro e schiena neutra.","Non inseguire il peso e non arrotondare la schiena."],["Shoulder press leggero",3,"8–12",60,"Spalle • tricipiti","shoulderpress","Usa bottiglie leggere, addome attivo e movimento lento sopra la testa.","Niente carichi elevati e niente compensi con la schiena."],["Rematore leggero",3,"10–12",60,"Schiena • braccia","row","Usa uno zaino molto leggero o bottiglie; tira verso il fianco lentamente.","Non usare slancio e non aumentare il carico troppo presto."],["Squat",4,"12–20",75,"Gambe • glutei","squat","Piedi stabili, ginocchia seguono le punte, discesa controllata.","Ginocchia verso l'interno o talloni sollevati."],["Plank",3,"35–60 sec",60,"Core","plank","Addome e glutei attivi, corpo in linea.","Non lasciare cadere il bacino."]]},I:{name:"Core & Balance",place:"Casa / Mare",mins:30,desc:"Core, equilibrio e coordinazione.",img:"https://images.pexels.com/photos/7510364/pexels-photo-7510364.jpeg?auto=compress&cs=tinysrgb&w=1200",ex:[["Affondo in avanti tecnico",3,"8/lato",60,"Gambe • equilibrio","lunge","Passo controllato, ginocchio stabile e ritorno senza fretta.","Usa un appoggio se serve e non forzare la profondità."],["Dead bug",3,"8–12/lato",45,"Core","plank","Schiena bassa stabile, movimento lento.","Non perdere il controllo lombare."],["Plank",3,"35–60 sec",60,"Core","plank","Addome e glutei attivi, corpo in linea.","Non lasciare cadere il bacino."],["Burpee tecnico",3,"5–8",60,"Total body • coordinazione","burpee","Esegui ogni fase separatamente e in controllo; il salto finale è opzionale.","Non accelerare se la tecnica peggiora."]]},J:{name:"Weekend Challenge",place:"Casa / Mare",mins:50,desc:"Seduta completa di fine settimana senza massimali.",img:"https://images.pexels.com/photos/8916202/pexels-photo-8916202.jpeg?auto=compress&cs=tinysrgb&w=1200",ex:[["Shoulder press leggero",3,"8–12",60,"Spalle • tricipiti","shoulderpress","Usa bottiglie leggere, addome attivo e movimento lento sopra la testa.","Niente carichi elevati e niente compensi con la schiena."],["Hip hinge tecnico",3,"10–12",60,"Glutei • posteriori","deadlift","Impara il movimento dell'anca con carico minimo o nullo: bacino indietro e schiena neutra.","Non inseguire il peso e non arrotondare la schiena."],["Rematore leggero",3,"10–12",60,"Schiena • braccia","row","Usa uno zaino molto leggero o bottiglie; tira verso il fianco lentamente.","Non usare slancio e non aumentare il carico troppo presto."],["Affondo in avanti tecnico",3,"8/lato",60,"Gambe • equilibrio","lunge","Passo controllato, ginocchio stabile e ritorno senza fretta.","Usa un appoggio se serve e non forzare la profondità."],["Burpee tecnico",3,"5–8",60,"Total body • coordinazione","burpee","Esegui ogni fase separatamente e in controllo; il salto finale è opzionale.","Non accelerare se la tecnica peggiora."],["Plank",3,"35–60 sec",60,"Core","plank","Addome e glutei attivi, corpo in linea.","Non lasciare cadere il bacino."]]}}};
-let profile=localStorage.getItem("ftProfile")||"dad", currentDay="A", exIndex=0, setDone=0, timerInt=null, sessionStarted=null, sessionTicker=null, repsLog=[], activeSeconds=0, sessionWorkout=null;
+let profile=localStorage.getItem("ftProfile")||"dad", currentDay="A", exIndex=0, setDone=0, timerInt=null, sessionStarted=null, sessionTicker=null, repsLog=[], activeSeconds=0, sessionWorkout=null, togetherState=null, togetherTicker=null, togetherSeconds=0;
 
 function db(){return JSON.parse(localStorage.getItem("ftData")||'{"sessions":[]}')}
 function saveDB(d){localStorage.setItem("ftData",JSON.stringify(d))}
+
+function openTogetherPicker(){
+ const buttons=Object.entries(plans.dad).map(([k,w])=>`<button class="primary" style="width:100%;margin:5px 0" onclick="startTogether('${k}')">${k} · ${w.name}</button>`).join("");
+ sheet.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center"><h2>Allenati Insieme</h2><button onclick="modal.classList.add('hidden')">✕</button></div><p class="note">Scegliete il giorno. L'app alterna TU e FIGLIA e salva i dati separatamente.</p>${buttons}`;
+ modal.classList.remove("hidden");
+}
+function startTogether(day){
+ modal.classList.add("hidden");
+ togetherState={day,dadWorkout:adaptiveWorkout(plans.dad[day]),girlWorkout:adaptiveWorkout(plans.girl[day]),exIndex:0,turn:"dad",dadSet:0,girlSet:0,dadLogs:[],girlLogs:[],startedAt:Date.now(),currentRPE:0};
+ togetherSeconds=0;clearInterval(togetherTicker);
+ togetherTicker=setInterval(()=>{togetherSeconds++;const el=document.getElementById("togetherElapsed");if(el)el.textContent=new Date(togetherSeconds*1000).toISOString().slice(14,19)},1000);
+ show("together");renderTogetherExercise();
+}
+function tcEx(person){const st=togetherState,w=person==="dad"?st.dadWorkout:st.girlWorkout;return st.exIndex<w.ex.length?w.ex[st.exIndex]:null}
+function renderTogetherExercise(){
+ const st=togetherState;if(!st)return;
+ const max=Math.max(st.dadWorkout.ex.length,st.girlWorkout.ex.length),dadE=tcEx("dad"),girlE=tcEx("girl");
+ document.getElementById("togetherBar").style.width=Math.round(st.exIndex/max*100)+"%";
+ document.getElementById("togetherWorkoutTitle").textContent=`${st.day} · Sessione condivisa`;
+ document.getElementById("togetherWorkoutPlace").textContent=adaptiveMode.enabled?`${adaptiveMode.location} · ${adaptiveMode.minutes} min`:"Programma standard";
+ turnDad.classList.toggle("active",st.turn==="dad");turnGirl.classList.toggle("active",st.turn==="girl");
+ turnDadStatus.textContent=dadE?`${st.dadSet}/${dadE[1]} serie`:"Completato";turnGirlStatus.textContent=girlE?`${st.girlSet}/${girlE[1]} serie`:"Completato";
+ const who=st.turn,e=tcEx(who);if(!e){switchTogether();return}
+ const whoLabel=who==="dad"?"👨 TU":"👧 FIGLIA",setsDone=who==="dad"?st.dadSet:st.girlSet,info=exerciseInfo(e);
+ togetherExerciseView.innerHTML=`<div class="card pad"><span class="turnBadge">TOCCA A ${whoLabel}</span><div class="exerciseHeader" style="margin-top:8px">${e[0]}</div><div class="exerciseMeta"><span class="chip">${e[4]}</span><span class="chip">${e[1]} serie</span><span class="chip">${e[2]}</span></div>${ftSmartBox(e)}${mediaBlock(e[5],e[0])}<div class="infoPanel">${e[6]}</div><div class="levels"><div class="level"><b>⬇️ PIÙ FACILE</b><br>${info.easy}</div><div class="level"><b>⬆️ PIÙ DIFFICILE</b><br>${info.hard}</div></div></div>
+ <div class="card pad"><div class="guideRow"><b>Serie di ${whoLabel}</b><b>${setsDone}/${e[1]}</b></div><div class="recordBox" style="margin-top:10px"><div><div class="sub">Ripetizioni</div><input id="togetherReps" class="input" inputmode="numeric" placeholder="es. 12"></div><div><div class="sub">Note / carico</div><input id="togetherNote" class="input" placeholder="opzionale"></div></div><div class="rpeSelect" id="togetherRpe"><button onclick="pickTogetherRPE(1,this)">🙂</button><button onclick="pickTogetherRPE(2,this)">😊</button><button onclick="pickTogetherRPE(3,this)">😐</button><button onclick="pickTogetherRPE(4,this)">😓</button><button onclick="pickTogetherRPE(5,this)">🥵</button></div><button class="green bigAction" style="margin-top:12px" onclick="completeTogetherSet()">✓ SERIE COMPLETATA</button></div>`;
+ st.currentRPE=0;
+}
+function pickTogetherRPE(v,el){togetherState.currentRPE=v;document.querySelectorAll("#togetherRpe button").forEach(b=>b.classList.remove("sel"));el?.classList.add("sel")}
+function completeTogetherSet(){
+ const st=togetherState,who=st.turn,e=tcEx(who);if(!e)return;
+ const reps=document.getElementById("togetherReps")?.value.trim()||"",note=document.getElementById("togetherNote")?.value.trim()||"",rpe=st.currentRPE||0;
+ if(who==="dad"){st.dadSet++;st.dadLogs.push({exercise:e[0],set:st.dadSet,reps,note,rpe,savedAt:Date.now()})}else{st.girlSet++;st.girlLogs.push({exercise:e[0],set:st.girlSet,reps,note,rpe,savedAt:Date.now()})}
+ saveTogetherDraft();showTogetherRest(Math.min(e[3],75));
+}
+function showTogetherRest(sec){let w=document.createElement("div");w.className="restOverlay";w.id="togetherRest";w.innerHTML=`<div class="restCard"><div class="sub">RECUPERO CONDIVISO</div><div class="restClock" id="togetherRestClock">${formatClock(sec)}</div><button class="primary bigAction" onclick="finishTogetherRest()">SALTA RECUPERO ›</button></div>`;document.body.appendChild(w);togetherState.rest=sec;clearInterval(timerInt);timerInt=setInterval(()=>{togetherState.rest--;const c=document.getElementById("togetherRestClock");if(c)c.textContent=formatClock(Math.max(0,togetherState.rest));if(togetherState.rest<=0){clearInterval(timerInt);navigator.vibrate?.([150,80,150]);finishTogetherRest()}},1000)}
+function finishTogetherRest(){clearInterval(timerInt);document.getElementById("togetherRest")?.remove();switchTogether()}
+function switchTogether(){
+ const st=togetherState,d=tcEx("dad"),g=tcEx("girl"),dd=!d||st.dadSet>=d[1],gd=!g||st.girlSet>=g[1];
+ if(st.turn==="dad"&&!gd){st.turn="girl";renderTogetherExercise();return}
+ if(st.turn==="girl"&&!dd){st.turn="dad";renderTogetherExercise();return}
+ if(dd&&gd){st.exIndex++;st.dadSet=0;st.girlSet=0;st.turn="dad";const max=Math.max(st.dadWorkout.ex.length,st.girlWorkout.ex.length);if(st.exIndex>=max){finishTogetherSession();return}if(!tcEx("dad")&&tcEx("girl"))st.turn="girl";renderTogetherExercise();return}
+ renderTogetherExercise();
+}
+function saveTogetherDraft(){if(togetherState)localStorage.setItem("ftTogetherDraft",JSON.stringify({day:togetherState.day,ts:togetherState.startedAt,updatedAt:Date.now(),seconds:togetherSeconds,dadLogs:togetherState.dadLogs,girlLogs:togetherState.girlLogs}))}
+function finishTogetherSession(){
+ clearInterval(togetherTicker);clearInterval(timerInt);const d=db(),sec=Math.max(60,togetherSeconds),ts=Date.now();
+ d.sessions.push({profile:"dad",day:togetherState.day,ts,durationSec:sec,kcal:Math.round(5.5*3.5*72/200*(sec/60)),logs:togetherState.dadLogs,completed:true,together:true});
+ d.sessions.push({profile:"girl",day:togetherState.day,ts,durationSec:sec,kcal:Math.round(5*3.5*53/200*(sec/60)),logs:togetherState.girlLogs,completed:true,together:true});
+ saveDB(d);localStorage.removeItem("ftTogetherDraft");togetherState=null;alert("Allenamento insieme completato e salvato per entrambi!");show("home");renderHome();
+}
+function exitTogether(){if(confirm("Vuoi uscire? Le serie già registrate resteranno salvate come bozza.")){saveTogetherDraft();clearInterval(togetherTicker);clearInterval(timerInt);show("home")}}
+
 function selectProfile(p){profile=p;localStorage.setItem("ftProfile",p);dadBtn.classList.toggle("active",p==="dad");girlBtn.classList.toggle("active",p==="girl");renderHome()}
 function profileSessions(){return db().sessions.filter(s=>s.profile===profile)}
 function dayKey(ts){let d=new Date(ts);return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
@@ -782,10 +857,10 @@ function exitSession(){
    show("home");
  }
 }
-function show(id){["home","session","nutrition","progressPage","safety"].forEach(x=>document.getElementById(x).classList.toggle("hidden",x!==id));if(id==="progressPage"){progressTab="overview";renderProgress();}if(id==="home")renderHome()}
+function show(id){["home","session","together","nutrition","progressPage","safety"].forEach(x=>document.getElementById(x).classList.toggle("hidden",x!==id));if(id==="progressPage"){progressTab="overview";renderProgress();}if(id==="home")renderHome()}
 function renderHistory(){let ss=profileSessions().slice().reverse();history.innerHTML=ss.length?ss.map(s=>`<div class="card pad"><b>Allenamento ${s.day}</b><div class="sub">${new Date(s.ts).toLocaleString("it-IT")}</div><div class="chips"><span class="chip">⏱ ${fmtTime(s.durationSec)}</span><span class="chip">🔥 ${s.kcal} kcal stimate</span></div></div>`).join(""):'<p class="note">Ancora nessun allenamento registrato.</p>'}
 function openStats(){let s=stats();sheet.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center"><h2>Statistiche live</h2><button onclick="modal.classList.add('hidden')">✕</button></div><div class="statline"><div class="stat"><b>${s.sessions}</b><small>Allenamenti</small></div><div class="stat"><b>${fmtTime(s.totalSec)}</b><small>Tempo totale</small></div><div class="stat"><b>${s.kcal}</b><small>kcal stimate</small></div><div class="stat"><b>${s.streak}</b><small>Streak</small></div></div><div class="card pad"><b>Settimana</b><p>${s.weekDone}/3 allenamenti completati</p></div>`;modal.classList.remove("hidden")}
-function openSettings(){sheet.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center"><h2>Impostazioni</h2><button onclick="modal.classList.add('hidden')">✕</button></div><div class="card pad"><button style="width:100%" onclick="if(confirm('Azzero tutti i dati salvati?')){localStorage.removeItem('ftData');modal.classList.add('hidden');renderHome()}">Azzera tutti i dati</button></div><div class="card pad"><p class="note">I dati vengono salvati localmente su questo dispositivo/browser.</p><p class="note"><b>Versione: V10.3 New Exercises + Real Tutorials</b></p></div>`;modal.classList.remove("hidden")}
+function openSettings(){sheet.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center"><h2>Impostazioni</h2><button onclick="modal.classList.add('hidden')">✕</button></div><div class="card pad"><button style="width:100%" onclick="if(confirm('Azzero tutti i dati salvati?')){localStorage.removeItem('ftData');modal.classList.add('hidden');renderHome()}">Azzera tutti i dati</button></div><div class="card pad"><p class="note">I dati vengono salvati localmente su questo dispositivo/browser.</p><p class="note"><b>Versione: V11 Allenati Insieme</b></p></div>`;modal.classList.remove("hidden")}
 function closeModal(e){if(e.target===modal)modal.classList.add("hidden")}
 renderHome();
 </script>
