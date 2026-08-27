@@ -234,6 +234,20 @@ main{max-width:720px;padding:14px 14px 108px}
  .planBox>.row>button{padding:9px 10px;font-size:11px}
  .planToday .big{font-size:17px}
 }
+
+/* V17 WORKOUT LIBRARY */
+.libraryBox{background:linear-gradient(145deg,#101827,#16152a);border:1px solid #514a8f;border-radius:18px;padding:14px;margin:12px 0}
+.libraryFilters{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin:10px 0}
+.libraryFilters button{font-size:11px;padding:9px 7px}
+.libraryFilters button.sel{background:linear-gradient(135deg,#6f4cff,#9c43ff)}
+.libraryItem{background:#0d1723;border:1px solid #28384e;border-radius:15px;padding:12px;margin:9px 0}
+.libraryItemTop{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.libraryMeta{display:flex;gap:5px;flex-wrap:wrap;margin-top:6px}
+.favBtn{background:#182131;border:1px solid #2c3c52;padding:8px 10px;font-size:18px;min-width:42px}
+.favBtn.on{background:#5a4212;border-color:#a98120}
+.searchInput{width:100%;background:#0b141f;border:1px solid #2b3c53;color:#fff;border-radius:12px;padding:11px;font-size:15px}
+.emptyState{text-align:center;padding:24px;color:#9ba8ba}
+
 </style><link rel="manifest" href="manifest.webmanifest">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -289,6 +303,15 @@ main{max-width:720px;padding:14px 14px 108px}
   </div>
   <div id="plannerHome"></div>
 </div>
+
+<div class="libraryBox">
+  <div class="row" style="display:flex;justify-content:space-between;align-items:center">
+    <div><b>📚 Libreria allenamenti</b><div class="sub">Trova subito il programma giusto tra A–J.</div></div>
+    <button onclick="openWorkoutLibrary()">APRI</button>
+  </div>
+  <div id="favoriteQuick" class="sub" style="margin-top:8px"></div>
+</div>
+
 
 
 
@@ -607,7 +630,8 @@ function fitStorageKeys(){
       k.startsWith("ftDraft_") ||
       k.startsWith("ftBody_") ||
       k.startsWith("ftNutrition_") ||
-      k.startsWith("ftPlanner_")
+      k.startsWith("ftPlanner_") ||
+      k.startsWith("ftFavorites_")
    )) keys.push(k);
  }
  return [...new Set(keys)].sort();
@@ -784,9 +808,76 @@ function openPlanner(){
  modal.classList.remove("hidden");
 }
 
+
+let libraryFilter="ALL",libraryDuration="ALL",librarySearch="";
+
+function favKey(){return "ftFavorites_"+profile}
+function getFavorites(){
+ try{return JSON.parse(localStorage.getItem(favKey())||"[]")}catch(e){return []}
+}
+function saveFavorites(arr){localStorage.setItem(favKey(),JSON.stringify(arr))}
+function toggleFavorite(code){
+ const f=getFavorites(),i=f.indexOf(code);
+ if(i>=0)f.splice(i,1);else f.push(code);
+ saveFavorites(f);
+ renderWorkoutLibrary();
+ renderFavoriteQuick();
+}
+function renderFavoriteQuick(){
+ const el=document.getElementById("favoriteQuick");if(!el)return;
+ const favs=getFavorites();
+ if(!favs.length){el.textContent="Nessun preferito ancora.";return}
+ const names=favs.slice(0,4).map(k=>plans[profile][k]?`${k} · ${plans[profile][k].name}`:k);
+ el.textContent="⭐ "+names.join("  •  ");
+}
+function libraryMatches(code,w){
+ const q=librarySearch.trim().toLowerCase();
+ if(q && !(`${code} ${w.name} ${w.desc} ${w.place}`.toLowerCase().includes(q)))return false;
+ if(libraryFilter==="CASA" && !String(w.place).includes("Casa"))return false;
+ if(libraryFilter==="MARE" && !String(w.place).includes("Mare"))return false;
+ if(libraryFilter==="PREFERITI" && !getFavorites().includes(code))return false;
+ const mins=Number(w.mins)||45;
+ if(libraryDuration==="BREVE" && mins>30)return false;
+ if(libraryDuration==="MEDIA" && (mins<31||mins>45))return false;
+ if(libraryDuration==="LUNGA" && mins<46)return false;
+ return true;
+}
+function setLibraryFilter(v){libraryFilter=v;renderWorkoutLibrary()}
+function setLibraryDuration(v){libraryDuration=v;renderWorkoutLibrary()}
+function updateLibrarySearch(v){librarySearch=v;renderWorkoutLibrary()}
+function openWorkoutLibrary(){
+ libraryFilter="ALL";libraryDuration="ALL";librarySearch="";
+ sheet.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center"><h2>📚 Libreria allenamenti</h2><button onclick="modal.classList.add('hidden')">✕</button></div><div id="workoutLibraryContent"></div>`;
+ modal.classList.remove("hidden");
+ renderWorkoutLibrary();
+}
+function renderWorkoutLibrary(){
+ const box=document.getElementById("workoutLibraryContent");if(!box)return;
+ const favs=getFavorites();
+ const entries=Object.entries(plans[profile]).filter(([k,w])=>libraryMatches(k,w));
+ box.innerHTML=`<input class="searchInput" value="${librarySearch}" oninput="updateLibrarySearch(this.value)" placeholder="Cerca: gambe, core, mare...">
+ <div class="libraryFilters">
+  <button class="${libraryFilter==="ALL"?"sel":""}" onclick="setLibraryFilter('ALL')">TUTTI</button>
+  <button class="${libraryFilter==="PREFERITI"?"sel":""}" onclick="setLibraryFilter('PREFERITI')">⭐ PREFERITI</button>
+  <button class="${libraryFilter==="CASA"?"sel":""}" onclick="setLibraryFilter('CASA')">🏠 CASA</button>
+  <button class="${libraryFilter==="MARE"?"sel":""}" onclick="setLibraryFilter('MARE')">🌊 MARE</button>
+ </div>
+ <div class="libraryFilters">
+  <button class="${libraryDuration==="ALL"?"sel":""}" onclick="setLibraryDuration('ALL')">QUALSIASI DURATA</button>
+  <button class="${libraryDuration==="BREVE"?"sel":""}" onclick="setLibraryDuration('BREVE')">≤ 30 MIN</button>
+  <button class="${libraryDuration==="MEDIA"?"sel":""}" onclick="setLibraryDuration('MEDIA')">31–45 MIN</button>
+  <button class="${libraryDuration==="LUNGA"?"sel":""}" onclick="setLibraryDuration('LUNGA')">46+ MIN</button>
+ </div>
+ ${entries.length?entries.map(([k,base])=>{
+   const w=adaptiveWorkout(base);
+   return `<div class="libraryItem"><div class="libraryItemTop"><div><div class="wtitle">${k} · ${w.name}</div><div class="libraryMeta"><span class="chip">${String(w.place).includes("Mare")?"🌊":"🏠"} ${w.place}</span><span class="chip">⏱ ${w.mins} min</span><span class="chip">${w.ex.length} esercizi</span></div></div><button class="favBtn ${favs.includes(k)?"on":""}" onclick="toggleFavorite('${k}')">${favs.includes(k)?"⭐":"☆"}</button></div><p class="desc">${w.desc}</p><button class="primary" style="width:100%;margin-top:8px" onclick="modal.classList.add('hidden');start('${k}')">INIZIA ALLENAMENTO ▶</button></div>`;
+ }).join(""):'<div class="emptyState">Nessun allenamento corrisponde ai filtri.</div>'}`;
+}
+
 function renderHome(){
  updateOfflineStatus();
  setTimeout(renderPlannerHome,0);
+ setTimeout(renderFavoriteQuick,0);
  const D=id=>document.getElementById(id);
  D("dadBtn").classList.toggle("active",profile==="dad");
  D("girlBtn").classList.toggle("active",profile==="girl");
@@ -1426,7 +1517,7 @@ function openSettings(){
  <div class="card pad">
   <button style="width:100%" onclick="if(confirm('Azzero tutti i dati salvati?')){clearAllFitData();modal.classList.add('hidden');renderHome()}">Azzera tutti i dati</button>
  </div>
- <div class="card pad"><p class="note">I dati vengono salvati localmente su questo dispositivo/browser.</p><p class="note"><b>Versione: V16.1 Planner Layout Fix</b></p></div>`;
+ <div class="card pad"><p class="note">I dati vengono salvati localmente su questo dispositivo/browser.</p><p class="note"><b>Versione: V17 Libreria Allenamenti</b></p></div>`;
  modal.classList.remove("hidden")
 }
 
