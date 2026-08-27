@@ -302,6 +302,19 @@ main{max-width:720px;padding:14px 14px 108px}
 .voiceBox{background:linear-gradient(145deg,#101827,#18142b);border:1px solid #5d47a8;border-radius:16px;padding:13px;margin-top:10px}
 .voiceActions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
 
+
+/* V22.1 VOICE VISIBILITY FIX */
+.voiceBox{width:100%}
+#voiceHomeCard{margin:12px 0}
+#voiceHomeToggle{min-width:92px}
+.voiceBadge{white-space:nowrap;flex:0 0 auto}
+.guideRow{gap:6px}
+@media(max-width:430px){
+ .guideRow .voiceBadge{font-size:0;min-width:42px;width:42px;height:42px;padding:0;border-radius:50%;display:grid;place-items:center}
+ .guideRow .voiceBadge::before{content:"🔇";font-size:18px}
+ .guideRow .voiceBadge.on::before{content:"🔊";font-size:18px}
+}
+
 </style><link rel="manifest" href="manifest.webmanifest">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -365,6 +378,22 @@ main{max-width:720px;padding:14px 14px 108px}
   </div>
   <div id="readinessHome"></div>
 </div>
+
+<div class="voiceBox" id="voiceHomeCard">
+  <div class="row" style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+    <div>
+      <b>🔊 Coach Vocale</b>
+      <div class="sub">Guida parlata durante riscaldamento, esercizi e recuperi.</div>
+    </div>
+    <button id="voiceHomeToggle" class="primary" onclick="toggleVoiceCoach();renderVoiceHome()">ATTIVA</button>
+  </div>
+  <div class="voiceActions">
+    <button onclick="speakCoach('Coach vocale pronto. Buon allenamento!',true)">▶ PROVA VOCE</button>
+    <button onclick="window.speechSynthesis?.cancel()">■ STOP</button>
+  </div>
+  <div id="voiceHomeState" class="sub" style="margin-top:8px"></div>
+</div>
+
 
 
 <div class="libraryBox">
@@ -1146,12 +1175,23 @@ function beginCustomWorkoutSession(item){
  show("session");renderExercise();
 }
 
+
+function renderVoiceHome(){
+ const on=voiceCoachEnabled();
+ const b=document.getElementById("voiceHomeToggle");
+ const s=document.getElementById("voiceHomeState");
+ if(b){b.textContent=on?"DISATTIVA":"ATTIVA";b.classList.toggle("green",on)}
+ if(s)s.textContent=on?"✅ Coach vocale attivo":"Coach vocale disattivato";
+ updateVoiceButtons();
+}
+
 function renderHome(){
  updateOfflineStatus();
  setTimeout(renderPlannerHome,0);
  setTimeout(renderReadinessHome,0);
  setTimeout(renderFavoriteQuick,0);
  setTimeout(renderCustomQuick,0);
+ setTimeout(renderVoiceHome,0);
  const D=id=>document.getElementById(id);
  D("dadBtn").classList.toggle("active",profile==="dad");
  D("girlBtn").classList.toggle("active",profile==="girl");
@@ -2026,7 +2066,7 @@ function openSettings(){
  <div class="card pad">
   <button style="width:100%" onclick="if(confirm('Azzero tutti i dati salvati?')){clearAllFitData();modal.classList.add('hidden');renderHome()}">Azzera tutti i dati</button>
  </div>
- <div class="card pad"><p class="note">I dati vengono salvati localmente su questo dispositivo/browser.</p><p class="note"><b>Versione: V22 Coach Vocale</b></p></div>`;
+ <div class="card pad"><p class="note">I dati vengono salvati localmente su questo dispositivo/browser.</p><p class="note"><b>Versione: V22.1 Voice Visibility Fix</b></p></div>`;
  modal.classList.remove("hidden")
 }
 
