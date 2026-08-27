@@ -209,6 +209,18 @@ main{max-width:720px;padding:14px 14px 108px}
 .backupStatus{background:#0c1520;border:1px solid #26374d;border-radius:13px;padding:10px;margin-top:10px;font-size:12px;line-height:1.45}
 .backupOk{color:#baffd0}.backupWarn{color:#ffd0a7}
 
+
+/* V16 SMART WEEKLY PLANNER */
+.planBox{background:linear-gradient(145deg,#101827,#19142c);border:1px solid #6047aa;border-radius:18px;padding:14px;margin:12px 0}
+.planDays{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin-top:10px}
+.planDay{background:#0d1723;border:1px solid #28384e;border-radius:12px;padding:8px 3px;text-align:center;font-size:10px}
+.planDay.sel{outline:2px solid #8a5cff;background:#17152b}
+.planDay.done{border-color:#2f8e55;color:#baffd0}
+.planToday{background:#0d1723;border:1px solid #2a3b52;border-radius:15px;padding:12px;margin-top:10px}
+.planToday .big{font-size:22px;font-weight:950}
+.planGrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.planReason{font-size:12px;color:#aab6c6;line-height:1.45;margin-top:7px}
+
 </style><link rel="manifest" href="manifest.webmanifest">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -254,7 +266,15 @@ main{max-width:720px;padding:14px 14px 108px}
   </div>
 </div>
 
-<div class="card pad week"><b>📅 Questa settimana</b><div class="weekbar"><i id="weekBar"></i></div><b id="weekText">0/3</b></div>
+<div class="card pad week"><b>📅 Questa settimana</b><div class="weekbar"><i id="weekBar"></i></div>
+<div class="planBox">
+  <div class="row" style="display:flex;justify-content:space-between;align-items:center">
+    <div><b>🧠 Planner settimanale</b><div class="sub">Il prossimo allenamento viene scelto usando storico, recupero e giorni disponibili.</div></div>
+    <button onclick="openPlanner()">PIANIFICA</button>
+  </div>
+  <div id="plannerHome"></div>
+</div>
+<b id="weekText">0/3</b></div>
 
 
 
@@ -459,8 +479,8 @@ function stats(){
  let unique=[...new Set(ss.map(s=>dayKey(s.ts)))].sort().reverse(), streak=0;
  if(unique.length){let cur=new Date();cur.setHours(0,0,0,0);let first=new Date(unique[0]); if((cur-first)/86400000<=1){streak=1;for(let i=1;i<unique.length;i++){let a=new Date(unique[i-1]),b=new Date(unique[i]);if((a-b)/86400000===1)streak++;else break;}}}
  let now=new Date(), monday=new Date(now);monday.setHours(0,0,0,0);let wd=(monday.getDay()+6)%7;monday.setDate(monday.getDate()-wd);
- let weekDone=new Set(ss.filter(s=>s.ts>=monday.getTime()).map(s=>s.day)).size;
- return {sessions:ss.length,totalSec,kcal:Math.round(kcal),streak,weekDone,pct:Math.min(100,Math.round(weekDone/3*100))}
+ let weekDone=new Set(ss.filter(s=>s.ts>=monday.getTime()).map(s=>s.day)).size;let target=plannerDb().target||3;
+ return {sessions:ss.length,totalSec,kcal:Math.round(kcal),streak,weekDone,target,pct:Math.min(100,Math.round(weekDone/target*100))}
 }
 function fmtTime(sec){if(sec<3600)return Math.round(sec/60)+"m";return Math.floor(sec/3600)+"h "+Math.round((sec%3600)/60)+"m"}
 
@@ -571,7 +591,8 @@ function fitStorageKeys(){
       k==="ftLastBackup" ||
       k.startsWith("ftDraft_") ||
       k.startsWith("ftBody_") ||
-      k.startsWith("ftNutrition_")
+      k.startsWith("ftNutrition_") ||
+      k.startsWith("ftPlanner_")
    )) keys.push(k);
  }
  return [...new Set(keys)].sort();
@@ -656,8 +677,101 @@ function backupHealth(){
  return {keys:Object.keys(d.storage).length,sessions,bodyKeys,nutriKeys};
 }
 
+
+const plannerDayNames=["Lun","Mar","Mer","Gio","Ven","Sab","Dom"];
+
+function plannerKey(){return "ftPlanner_"+profile}
+function plannerDb(){
+ try{return JSON.parse(localStorage.getItem(plannerKey())||'{"days":[1,3,5],"target":3}')}catch(e){return {days:[1,3,5],target:3}}
+}
+function savePlannerDb(d){localStorage.setItem(plannerKey(),JSON.stringify(d))}
+function isoWeekStart(ts=Date.now()){
+ const d=new Date(ts);d.setHours(0,0,0,0);
+ const wd=(d.getDay()+6)%7;d.setDate(d.getDate()-wd);return d;
+}
+function plannerTodayIndex(){return (new Date().getDay()+6)%7}
+function plannerWeekSessions(){
+ const start=isoWeekStart().getTime(),end=start+7*86400000;
+ return profileSessions().filter(s=>s.ts>=start&&s.ts<end);
+}
+function recentWorkoutDays(limit=6){
+ return profileSessions().slice().sort((a,b)=>b.ts-a.ts).slice(0,limit).map(s=>s.day);
+}
+function chooseNextWorkout(){
+ const keys=Object.keys(plans[profile]);
+ const recent=recentWorkoutDays(8);
+ const counts={};keys.forEach(k=>counts[k]=0);recent.forEach(k=>{if(counts[k]!==undefined)counts[k]++});
+ const last=recent[0]||null;
+ const scored=keys.map(k=>{
+   let score=100-(counts[k]||0)*16;
+   if(k===last)score-=35;
+   // favour A/B/C slightly as anchors, while still rotating D-J
+   if(["A","B","C"].includes(k))score+=5;
+   // if adaptive mode is Mare, favour workouts already labelled Mare
+   const w=plans[profile][k];
+   if(adaptiveMode.enabled && adaptiveMode.location==="Mare" && String(w.place).includes("Mare"))score+=8;
+   return {k,score,w};
+ }).sort((a,b)=>b.score-a.score);
+ return scored[0];
+}
+function restAdvice(){
+ const ss=profileSessions().slice().sort((a,b)=>b.ts-a.ts);
+ if(!ss.length)return {ready:true,text:"Nessun allenamento recente: puoi iniziare dal programma consigliato."};
+ const hours=(Date.now()-ss[0].ts)/3600000;
+ if(hours<12)return {ready:false,text:"Hai concluso una sessione da meno di 12 ore: oggi meglio recupero leggero o mobilità."};
+ if(hours<24)return {ready:true,text:"Recupero breve: scegli intensità controllata e ascolta le sensazioni."};
+ return {ready:true,text:"Recupero sufficiente dall'ultima sessione."};
+}
+function plannerSuggestion(){
+ const db=plannerDb(),today=plannerTodayIndex(),week=plannerWeekSessions();
+ const completed=new Set(week.map(s=>s.day));
+ const next=chooseNextWorkout(),rest=restAdvice();
+ const scheduled=db.days.includes(today);
+ const target=db.target||3;
+ return {db,today,week,completed,next,rest,scheduled,target};
+}
+function renderPlannerHome(){
+ const box=document.getElementById("plannerHome");if(!box)return;
+ const p=plannerSuggestion(),w=p.next.w;
+ box.innerHTML=`<div class="planToday">
+   <div class="sub">${p.scheduled?"OGGI È UN GIORNO PROGRAMMATO":"OGGI NON È PROGRAMMATO"}</div>
+   <div class="big">${p.rest.ready?"💪":"🛌"} ${p.rest.ready?`Consigliato: ${p.next.k} · ${w.name}`:"Recupero consigliato"}</div>
+   <div class="planReason">${p.rest.text}</div>
+   <div class="chips"><span class="chip">Settimana ${p.week.length}/${p.target}</span><span class="chip">${w.mins||45} min</span></div>
+   ${p.rest.ready?`<button class="primary" style="width:100%;margin-top:9px" onclick="start('${p.next.k}')">INIZIA ${p.next.k} ▶</button>`:""}
+  </div>`;
+}
+function togglePlannerDay(i){
+ const d=plannerDb(),pos=d.days.indexOf(i);
+ if(pos>=0)d.days.splice(pos,1);else d.days.push(i);
+ d.days.sort((a,b)=>a-b);savePlannerDb(d);openPlanner();
+}
+function setPlannerTarget(v){
+ const d=plannerDb();d.target=v;savePlannerDb(d);openPlanner();renderPlannerHome();
+}
+function openPlanner(){
+ const p=plannerSuggestion(),today=p.today,weekStart=isoWeekStart();
+ const completedDates=new Set(plannerWeekSessions().map(s=>new Date(s.ts).toDateString()));
+ const days=plannerDayNames.map((n,i)=>{
+   const dt=new Date(weekStart);dt.setDate(dt.getDate()+i);
+   const done=completedDates.has(dt.toDateString());
+   return `<button class="planDay ${p.db.days.includes(i)?"sel":""} ${done?"done":""}" onclick="togglePlannerDay(${i})"><b>${n}</b><br>${dt.getDate()}${done?"<br>✓":""}</button>`;
+ }).join("");
+ sheet.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center"><h2>Planner settimanale</h2><button onclick="modal.classList.add('hidden')">✕</button></div>
+ <div class="card pad"><h3>Giorni disponibili</h3><p class="note">Tocca i giorni in cui normalmente potete allenarvi.</p><div class="planDays">${days}</div></div>
+ <div class="card pad"><h3>Obiettivo settimanale</h3><div class="planGrid">
+  <button class="${p.db.target===2?"primary":""}" onclick="setPlannerTarget(2)">2 volte</button>
+  <button class="${p.db.target===3?"primary":""}" onclick="setPlannerTarget(3)">3 volte</button>
+  <button class="${p.db.target===4?"primary":""}" onclick="setPlannerTarget(4)">4 volte</button>
+  <button class="${p.db.target===5?"primary":""}" onclick="setPlannerTarget(5)">5 volte</button>
+ </div></div>
+ <div class="card pad"><h3>Prossimo allenamento</h3><div class="planToday"><div class="big">${p.next.k} · ${p.next.w.name}</div><div class="planReason">${p.rest.text}<br>La rotazione evita di proporti sempre lo stesso programma e tiene conto dello storico recente.</div><button class="primary" style="width:100%;margin-top:10px" onclick="modal.classList.add('hidden');start('${p.next.k}')">INIZIA ORA ▶</button></div></div>`;
+ modal.classList.remove("hidden");
+}
+
 function renderHome(){
  updateOfflineStatus();
+ setTimeout(renderPlannerHome,0);
  const D=id=>document.getElementById(id);
  D("dadBtn").classList.toggle("active",profile==="dad");
  D("girlBtn").classList.toggle("active",profile==="girl");
@@ -667,7 +781,7 @@ function renderHome(){
  D("sSessions").textContent=s.sessions;D("sTime").textContent=fmtTime(s.totalSec);
  D("sCalories").textContent=s.kcal;D("sStreak").textContent=s.streak;
  D("pct").textContent=s.pct+"%";D("ring").style.setProperty("--pct",s.pct+"%");
- D("weekText").textContent=s.weekDone+"/3";D("weekBar").style.width=(s.weekDone/3*100)+"%";
+ D("weekText").textContent=s.weekDone+"/"+s.target;D("weekBar").style.width=(s.weekDone/s.target*100)+"%";
  D("workouts").innerHTML=Object.entries(plans[profile]).map(([k,base])=>{
    const w=adaptiveWorkout(base);
    return `<div class="card workout"><img src="${w.img}"><div class="body"><div><div class="wtitle">${w.name}</div><div class="chips"><span class="chip">${w.place==="Mare"?"🌊":"🏠"} ${w.place}</span><span class="chip">⏱ ${w.mins} min</span>${adaptiveMode.enabled?'<span class="chip">⚡ ADATTIVO</span>':""}</div><div class="desc">${w.desc}</div><div style="color:#c780ff;font-weight:800;margin-top:8px">${w.ex.length} esercizi</div></div><button class="primary" onclick="start('${k}')">INIZIA ALLENAMENTO ▶</button></div></div>`;
@@ -958,7 +1072,7 @@ function renderProgressOverview(){
   <div class="summaryCard"><b>${w.sessions}</b><small>Sessioni · ${deltaText(w.sessionsDelta)}</small></div>
   <div class="summaryCard"><b>${fmtTime(w.time)}</b><small>Tempo · ${deltaText(w.timeDelta)}</small></div>
   <div class="summaryCard"><b>${Math.round(w.kcal)}</b><small>kcal · ${deltaText(w.kcalDelta)}</small></div>
-  <div class="summaryCard"><b>${s.weekDone}/3</b><small>Obiettivo settimanale</small></div>
+  <div class="summaryCard"><b>${s.weekDone}/${s.target||3}</b><small>Obiettivo settimanale</small></div>
  </div></div>
  <div class="card pad"><h3>Miglioramenti esercizi</h3>
  ${best.length?best.map(x=>`<div class="exerciseStat"><div class="row" style="display:flex;justify-content:space-between"><b>${x.name}</b><span class="${x.improvement>=0?'trendUp':'trendDown'}">${x.improvement>=0?'+':''}${x.improvement}%</span></div><div class="sub">Media recente ${x.recentAvg.toFixed(1)} · record ${x.best}</div><div class="miniBar"><i style="width:${Math.max(5,Math.min(100,50+x.improvement))}%"></i></div></div>`).join(""):'<p class="note">Registra qualche allenamento per vedere i miglioramenti reali.</p>'}
@@ -1297,7 +1411,7 @@ function openSettings(){
  <div class="card pad">
   <button style="width:100%" onclick="if(confirm('Azzero tutti i dati salvati?')){clearAllFitData();modal.classList.add('hidden');renderHome()}">Azzera tutti i dati</button>
  </div>
- <div class="card pad"><p class="note">I dati vengono salvati localmente su questo dispositivo/browser.</p><p class="note"><b>Versione: V15 Backup & Ripristino</b></p></div>`;
+ <div class="card pad"><p class="note">I dati vengono salvati localmente su questo dispositivo/browser.</p><p class="note"><b>Versione: V16 Planner Settimanale</b></p></div>`;
  modal.classList.remove("hidden")
 }
 
