@@ -445,6 +445,18 @@ main{max-width:720px;padding:14px 14px 108px}
 .advItemTop{display:flex;justify-content:space-between;gap:8px;align-items:center}
 .advGood{color:#a8ffbd}.advFlat{color:#ffd88a}.advDown{color:#ffb0ad}
 
+
+/* V34 SMART WORKOUT GENERATOR */
+.generatorBox{background:linear-gradient(145deg,#101827,#1e1633);border:1px solid #6b53b8;border-radius:18px;padding:13px;margin:12px 0}
+.generatorGrid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin-top:10px}
+.generatorChoice{background:#0d1723;border:1px solid #2b3b50;border-radius:12px;padding:10px;text-align:center;font-size:11px;font-weight:800}
+.generatorChoice.active{border-color:#8f70e3;background:#21163a}
+.generatorPlan{display:grid;gap:7px;margin-top:10px}
+.generatorEx{background:#0d1723;border:1px solid #2b3b50;border-radius:12px;padding:10px}
+.generatorExTop{display:flex;justify-content:space-between;gap:8px;align-items:center}
+.generatorMeta{font-size:10px;color:#9eabba;margin-top:4px}
+.generatorWhy{background:#171126;border-radius:12px;padding:9px;margin-top:9px;font-size:11px;line-height:1.45}
+
 </style><link rel="manifest" href="manifest.webmanifest">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -538,6 +550,15 @@ main{max-width:720px;padding:14px 14px 108px}
 <div class="balanceBox">
   <div id="balanceHome"></div>
 </div>
+
+<div class="generatorBox">
+  <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+    <div><b>✨ Smart Workout Generator</b><div class="sub">Crea una sessione adatta a oggi.</div></div>
+    <button onclick="openWorkoutGenerator()">CREA</button>
+  </div>
+  <div id="generatorHome"></div>
+</div>
+
 
 
 
@@ -1902,6 +1923,124 @@ function startBalanceSuggested(){
  start(day);
 }
 
+
+let generatorState={duration:30,place:"Casa",energy:"MEDIA",preview:null};
+
+function generatorPool(){
+ const list=[],seen=new Set();
+ Object.values(plans[profile]||{}).forEach(w=>{
+   (w.ex||[]).forEach(e=>{
+     const name=String(e[0]||"").trim();
+     if(!name||seen.has(name))return;
+     seen.add(name);
+     list.push({ex:e.slice(),name,tag:balanceTagForExercise(name),sourcePlace:String(w.place||w.location||"Casa/Mare")});
+   });
+ });
+ try{
+   const customs=JSON.parse(localStorage.getItem("ftCustomWorkouts_"+profile)||"[]");
+   customs.forEach(w=>(w.ex||[]).forEach(e=>{
+     const name=String(e[0]||"").trim();
+     if(!name||seen.has(name))return;
+     seen.add(name);
+     list.push({ex:e.slice(),name,tag:balanceTagForExercise(name),sourcePlace:String(w.place||w.location||"Casa/Mare")});
+   }));
+ }catch(e){}
+ return list;
+}
+function generatorPlaceOk(item,place){
+ const p=String(item.sourcePlace||"").toLowerCase(),wanted=String(place||"").toLowerCase();
+ if(wanted==="casa/mare")return true;
+ if(p.includes("casa/mare")||p.includes("mare/casa")||p.includes("entrambi"))return true;
+ return p.includes(wanted);
+}
+function generatorExerciseScore(item,focus,energy){
+ let s=0;
+ if(item.tag===focus)s+=5;
+ if(item.tag==="FULL")s+=2;
+ if(item.tag==="CORE")s+=1;
+ if(energy==="BASSA"&&item.tag==="FULL")s-=2;
+ if(energy==="ALTA"&&item.tag==="FULL")s+=2;
+ return s;
+}
+function buildGeneratedWorkout(){
+ const pool=generatorPool().filter(x=>generatorPlaceOk(x,generatorState.place));
+ if(!pool.length)return null;
+ const bal=typeof balanceAssessment==="function"?balanceAssessment():null;
+ const focus=(bal&&bal.focus)?bal.focus:"FULL";
+ const energy=generatorState.energy,dur=generatorState.duration;
+ let count=dur<=20?4:dur<=30?5:7;
+ if(energy==="BASSA")count=Math.max(3,count-1);
+ if(energy==="ALTA")count=Math.min(8,count+1);
+
+ const chosen=[],used=new Set(),tagsWanted=["GAMBE","SPINTA","TIRATA","CORE","FULL"];
+ tagsWanted.forEach(tag=>{
+   if(chosen.length>=count)return;
+   const c=pool.filter(x=>x.tag===tag&&!used.has(x.name))
+     .sort((a,b)=>generatorExerciseScore(b,focus,energy)-generatorExerciseScore(a,focus,energy));
+   if(c[0]){chosen.push(c[0]);used.add(c[0].name);}
+ });
+ pool.slice().sort((a,b)=>generatorExerciseScore(b,focus,energy)-generatorExerciseScore(a,focus,energy)).forEach(x=>{
+   if(chosen.length>=count||used.has(x.name))return;
+   chosen.push(x);used.add(x.name);
+ });
+
+ const ex=chosen.slice(0,count).map(x=>{
+   const e=x.ex.slice();
+   let sets=Number(e[1])||3,reps=Number(e[2])||10;
+   if(energy==="BASSA")sets=Math.max(2,sets-1);
+   if(energy==="ALTA"&&profile!=="girl")reps+=1;
+   if(profile==="girl"){sets=Math.min(3,sets);reps=Math.min(reps,15);}
+   e[1]=sets;e[2]=reps;return e;
+ });
+ return {name:`Smart ${dur} · ${generatorState.place}`,place:generatorState.place,duration:dur,ex,generated:true,focus,energy};
+}
+function generatorReason(w){
+ if(!w)return "Nessuna combinazione disponibile.";
+ let t=`Sessione da ${w.duration} minuti per ${w.place.toLowerCase()}, energia ${String(w.energy).toLowerCase()}.`;
+ if(w.focus&&w.focus!=="FULL")t+=` Priorità a ${w.focus} per riequilibrare il programma.`;
+ if(typeof getDeloadMode==="function"&&getDeloadMode())t+=" Recovery Week attiva: mantieni ritmo controllato.";
+ if(profile==="girl")t+=" Volume mantenuto più conservativo per FIGLIA.";
+ return t;
+}
+function renderGeneratorHome(){
+ const box=document.getElementById("generatorHome");if(!box)return;
+ const w=buildGeneratedWorkout();
+ box.innerHTML=w?`<div class="generatorWhy"><b>Oggi potresti fare:</b> ${w.name} · ${w.ex.length} esercizi.<br>${generatorReason(w)}</div>`:'<div class="sub" style="margin-top:8px">Apri il generatore per creare una sessione.</div>';
+}
+function openWorkoutGenerator(){generatorState.preview=buildGeneratedWorkout();renderGeneratorModal();}
+function setGeneratorOption(type,value){generatorState[type]=value;generatorState.preview=buildGeneratedWorkout();renderGeneratorModal();}
+function renderGeneratorModal(){
+ const w=generatorState.preview||buildGeneratedWorkout();
+ const btn=(type,val,label)=>`<button class="generatorChoice ${generatorState[type]===val?"active":""}" onclick="setGeneratorOption('${type}',${typeof val==="number"?val:`'${val}'`})">${label}</button>`;
+ sheet.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center"><h2>✨ Smart Workout Generator</h2><button onclick="modal.classList.add('hidden')">✕</button></div>
+ <div class="card pad"><b>Durata</b><div class="generatorGrid">${btn("duration",20,"20 MIN")}${btn("duration",30,"30 MIN")}${btn("duration",45,"45 MIN")}</div></div>
+ <div class="card pad" style="margin-top:9px"><b>Luogo</b><div class="generatorGrid">${btn("place","Casa","CASA")}${btn("place","Mare","MARE")}${btn("place","Casa/Mare","ENTRAMBI")}</div></div>
+ <div class="card pad" style="margin-top:9px"><b>Energia di oggi</b><div class="generatorGrid">${btn("energy","BASSA","BASSA")}${btn("energy","MEDIA","MEDIA")}${btn("energy","ALTA","ALTA")}</div></div>
+ ${w?`<div class="generatorWhy">${generatorReason(w)}</div><div class="generatorPlan">${w.ex.map((e,i)=>`<div class="generatorEx"><div class="generatorExTop"><b>${i+1}. ${e[0]}</b><span class="todayBadge">${e[1]}×${e[2]}</span></div><div class="generatorMeta">${balanceTagForExercise(e[0])}</div></div>`).join("")}</div>
+ <div class="summaryActions"><button onclick="regenerateWorkout()">RIGENERA ↻</button><button class="primary" onclick="startGeneratedWorkout()">INIZIA ▶</button></div>`:'<div class="sub" style="margin-top:10px">Nessun esercizio disponibile per questa combinazione.</div>'}`;
+ modal.classList.remove("hidden");
+}
+function regenerateWorkout(){
+ generatorState.preview=buildGeneratedWorkout();
+ if(generatorState.preview&&generatorState.preview.ex&&generatorState.preview.ex.length>2){
+   generatorState.preview.ex=generatorState.preview.ex.slice().sort(()=>Math.random()-.5);
+ }
+ renderGeneratorModal();
+}
+function startGeneratedWorkout(){
+ const w=generatorState.preview||buildGeneratedWorkout();if(!w)return;
+ modal.classList.add("hidden");
+ currentDay="SMART";
+ sessionWorkout=JSON.parse(JSON.stringify(w));
+ if(typeof getDeloadMode==="function"&&getDeloadMode())sessionWorkout=applyDeloadToWorkout(sessionWorkout);
+ exIndex=0;setIndex=0;
+ try{sessionStart=Date.now()}catch(e){}
+ try{saveLiveDraft()}catch(e){}
+ if(typeof startGuidedPhase==="function"&&localStorage.getItem("ftGuidedPhases")!=="0"){
+   try{startGuidedPhase("warmup",()=>renderExercise())}catch(e){renderExercise()}
+ }else renderExercise();
+}
+
 function renderHome(){
  updateOfflineStatus();
  setTimeout(renderPlannerHome,0);
@@ -1915,6 +2054,7 @@ function renderHome(){
  setTimeout(renderTodayCoach,0);
  setTimeout(renderDeloadHome,0);
  setTimeout(renderBalanceHome,0);
+ setTimeout(renderGeneratorHome,0);
  const D=id=>document.getElementById(id);
  D("dadBtn").classList.toggle("active",profile==="dad");
  D("girlBtn").classList.toggle("active",profile==="girl");
@@ -3321,7 +3461,7 @@ function openSettings(){
  <div class="card pad">
   <button style="width:100%" onclick="if(confirm('Azzero tutti i dati salvati?')){clearAllFitData();modal.classList.add('hidden');renderHome()}">Azzera tutti i dati</button>
  </div>
- <div class="card pad"><p class="note">I dati vengono salvati localmente su questo dispositivo/browser.</p><p class="note"><b>Versione: V33 Advanced Progress Dashboard</b></p></div>`;
+ <div class="card pad"><p class="note">I dati vengono salvati localmente su questo dispositivo/browser.</p><p class="note"><b>Versione: V34 Smart Workout Generator</b></p></div>`;
  modal.classList.remove("hidden")
 }
 
