@@ -518,6 +518,13 @@ main{max-width:720px;padding:14px 14px 108px}
 .cleanAudioNav{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:7px}
 .cleanAudioNav button{height:36px;padding:0!important}
 
+
+/* V37.1 COACH VOICE QUALITY & SELECTION */
+.voiceSelectWrap{margin-top:8px;padding:9px;border:1px solid #34455b;border-radius:12px;background:#0d1724}
+.voiceSelectWrap label{display:block;font-size:9px;font-weight:900;margin-bottom:5px;color:#b9c5d4}
+.voiceSelect{width:100%;background:#09121d;color:#fff;border:1px solid #3a4a60;border-radius:9px;padding:8px;font-size:10px;font-weight:800}
+.voiceHint{font-size:8px;color:#8392a5;margin-top:5px;line-height:1.35}
+
 </style><link rel="manifest" href="manifest.webmanifest">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -608,7 +615,18 @@ main{max-width:720px;padding:14px 14px 108px}
     </div>
     <button id="voiceHomeToggle" class="primary" onclick="toggleVoiceCoach();renderVoiceHome()">ATTIVA</button>
   </div>
-  <div class="voiceActions">
+  
+<div class="voiceSelectWrap">
+  <label>🎙️ VOCE DEL COACH</label>
+  <select id="coachVoiceMode" class="voiceSelect" onchange="setCoachVoiceMode(this.value)">
+    <option value="male_energy">Maschile energica</option>
+    <option value="male_calm">Maschile calma</option>
+    <option value="female_energy">Femminile energica</option>
+    <option value="female_calm">Femminile calma</option>
+  </select>
+  <div id="coachVoiceResolved" class="voiceHint">Seleziono automaticamente la migliore voce italiana disponibile su iPhone.</div>
+</div>
+<div class="voiceActions">
     <button onclick="testVoiceCoach()">▶ PROVA VOCE</button>
     <button onclick="window.speechSynthesis?.cancel()">■ STOP</button>
   </div>
@@ -2155,6 +2173,7 @@ function ftPrevTrack(){ftChooseTrack((ftEpicIndex-1+ftEpicTracks.length)%ftEpicT
 function ftRandomTrack(){let n=ftEpicIndex;while(n===ftEpicIndex)n=Math.floor(Math.random()*ftEpicTracks.length);ftChooseTrack(n);const a=ftMusicAudio();if(a)a.play().catch(()=>{});}
 
 function renderHome(){
+ setTimeout(renderCoachVoiceSelector,0);
  try{
    const ma=document.getElementById("ftMusicNative");
    if(ma && ma.volume<.99)ma.volume=1;
@@ -3504,18 +3523,81 @@ function testVoiceCoach(){
  localStorage.setItem("ftVoiceCoach","1");
  updateVoiceButtons();
  renderVoiceHome();
- ftCoachPlay("test");
+ renderCoachVoiceSelector();
+ const text="Perfetto. Coach attivo. Preparati: iniziamo forte, ma con tecnica pulita.";
+ if(!speakCoachNative(text,true))ftCoachPlay("test");
 }
+
+
+const ftCoachVoiceModes={
+ male_energy:{gender:"male",rate:1.02,pitch:.90,label:"Maschile energica"},
+ male_calm:{gender:"male",rate:.92,pitch:.88,label:"Maschile calma"},
+ female_energy:{gender:"female",rate:1.02,pitch:1.08,label:"Femminile energica"},
+ female_calm:{gender:"female",rate:.92,pitch:1.05,label:"Femminile calma"}
+};
+let ftCachedVoices=[];
+
+function coachVoiceMode(){
+ const v=localStorage.getItem("ftCoachVoiceMode")||"male_energy";
+ return ftCoachVoiceModes[v]?v:"male_energy";
+}
+function setCoachVoiceMode(v){
+ if(!ftCoachVoiceModes[v])v="male_energy";
+ localStorage.setItem("ftCoachVoiceMode",v);
+ renderCoachVoiceSelector();
+ testVoiceCoach();
+}
+function loadCoachVoices(){
+ try{ftCachedVoices=window.speechSynthesis?.getVoices?.()||[];}catch(e){ftCachedVoices=[];}
+ renderCoachVoiceSelector();
+}
+function preferredItalianVoice(){
+ const mode=ftCoachVoiceModes[coachVoiceMode()];
+ const voices=ftCachedVoices.length?ftCachedVoices:(window.speechSynthesis?.getVoices?.()||[]);
+ const it=voices.filter(v=>/^it(-|_)/i.test(v.lang||"") || /ital/i.test(v.name||""));
+ if(!it.length)return null;
+ const maleHints=/male|luca|paolo|marco|giorgio|fabio|diego|roberto|alessandro/i;
+ const femaleHints=/female|alice|elsa|federica|anna|giulia|martina|silvia/i;
+ let ranked=[...it];
+ ranked.sort((a,b)=>{
+   const ah=mode.gender==="male"?(maleHints.test(a.name)?2:0):(femaleHints.test(a.name)?2:0);
+   const bh=mode.gender==="male"?(maleHints.test(b.name)?2:0):(femaleHints.test(b.name)?2:0);
+   const aq=(/premium|enhanced|compact|natural/i.test(a.name)?1:0);
+   const bq=(/premium|enhanced|compact|natural/i.test(b.name)?1:0);
+   return (bh+bq)-(ah+aq);
+ });
+ return ranked[0]||it[0];
+}
+function renderCoachVoiceSelector(){
+ const sel=document.getElementById("coachVoiceMode");
+ if(sel)sel.value=coachVoiceMode();
+ const box=document.getElementById("coachVoiceResolved");
+ if(box){
+   const v=preferredItalianVoice();
+   box.textContent=v?`Voce iPhone: ${v.name} · ${v.lang}`:"Nessuna voce italiana nativa rilevata: userò il fallback incorporato.";
+ }
+}
+try{
+ if("speechSynthesis" in window){
+   window.speechSynthesis.onvoiceschanged=loadCoachVoices;
+   setTimeout(loadCoachVoices,100);
+ }
+}catch(e){}
 
 function voiceCoachEnabled(){if(localStorage.getItem("ftVoiceCoach")===null)localStorage.setItem("ftVoiceCoach","1");return localStorage.getItem("ftVoiceCoach")==="1"}
 function toggleVoiceCoach(){
  const next=!voiceCoachEnabled();
  localStorage.setItem("ftVoiceCoach",next?"1":"0");
  try{window.speechSynthesis?.cancel()}catch(e){}
- try{ftCoachAudio.pause()}catch(e){};try{const m=document.getElementById("ftMusicNative");if(m)m.volume=1}catch(e){}
+ try{ftCoachAudio.pause()}catch(e){}
+ try{const m=document.getElementById("ftMusicNative");if(m)m.volume=1}catch(e){}
  updateVoiceButtons();
  renderVoiceHome();
- if(next)ftCoachPlay("test");
+ renderCoachVoiceSelector();
+ if(next){
+   const ok=speakCoachNative("Coach attivo. Ci siamo. Iniziamo.",true);
+   if(!ok)ftCoachPlay("test");
+ }
 }
 function updateVoiceButtons(){
  const on=voiceCoachEnabled();
@@ -3527,17 +3609,36 @@ function updateVoiceButtons(){
  const s=document.getElementById("voiceSettingsState");
  if(s)s.textContent=on?"Coach vocale attivo":"Coach vocale disattivato";
 }
-function speakCoach(text,force=false){
- if((!voiceCoachEnabled()&&!force) || !text || !("speechSynthesis" in window))return;
+
+function speakCoachNative(text,force=false){
+ if((!voiceCoachEnabled()&&!force) || !text || !("speechSynthesis" in window))return false;
  try{
+   const mode=ftCoachVoiceModes[coachVoiceMode()];
+   const v=preferredItalianVoice();
+   if(!v)return false;
+   const m=document.getElementById("ftMusicNative");
+   if(m&&!m.paused)m.volume=.18;
    window.speechSynthesis.cancel();
    const u=new SpeechSynthesisUtterance(String(text));
-   u.lang="it-IT";
-   u.rate=0.95;
-   u.pitch=1.0;
-   u.volume=1.0;
+   u.lang=v.lang||"it-IT";
+   u.voice=v;
+   u.rate=mode.rate;
+   u.pitch=mode.pitch;
+   u.volume=1;
+   u.onend=()=>{if(m)m.volume=1;};
+   u.onerror=()=>{if(m)m.volume=1;};
    window.speechSynthesis.speak(u);
- }catch(e){}
+   return true;
+ }catch(e){
+   return false;
+ }
+}
+
+function speakCoach(text,force=false){
+ if((!voiceCoachEnabled()&&!force) || !text)return;
+ if(speakCoachNative(text,force))return;
+ /* fallback only if the selected native iPhone voice is unavailable */
+ if(ftCoachPlay("test") && force)return;
 }
 function speakExerciseIntro(e){
  if(!e)return;
@@ -3549,8 +3650,31 @@ function speakRest(sec,nextText){
 }
 function speakPhaseStep(step,type){
  if(!step||!voiceCoachEnabled())return;
+ const warm=type==="warmup";
+ const naturalMap={
+  "Marcia attiva":"Partiamo. Marcia attiva. Sciogli le gambe e trova subito un ritmo comodo.",
+  "Circonduzioni delle spalle":"Spalle. Fai circonduzioni ampie e morbide. Niente fretta.",
+  "Squat a corpo libero":"Squat libero. Scendi controllato e tieni il petto aperto.",
+  "Affondi alternati leggeri":"Affondi leggeri. Passo corto, equilibrio e ginocchio stabile.",
+  "Push-up al muro":"Push up al muro. Attiva petto e spalle senza affaticarti.",
+  "Scapole attive":"Scapole attive. Movimento lento e preciso.",
+  "Cat-cow":"Cat cow. Mobilizza bene la schiena e respira.",
+  "Dead bug facile":"Dead bug facile. Core attivo e movimento corto.",
+  "Squat leggero":"Squat leggero. Riscalda le gambe, senza forzare.",
+  "Plank alto dinamico":"Plank alto dinamico. Attiva addome e spalle.",
+  "Respirazione lenta":"Respira lentamente. Inspira dal naso ed espira lungo.",
+  "Stretch quadricipiti":"Quadricipiti. Mantieni la posizione e non molleggiare.",
+  "Stretch posteriori":"Posteriori. Schiena neutra e tensione dolce.",
+  "Stretch petto":"Apri il petto lentamente. Nessun dolore.",
+  "Stretch spalle":"Spalle. Allunga con calma.",
+  "Child pose":"Child pose. Respira e lascia andare la tensione.",
+  "Rotazioni dolci":"Rotazioni lente. Movimento morbido.",
+  "Stretch total body":"Allungamento completo. Respira e rilassati.",
+  "Camminata lenta":"Cammina piano. Lascia scendere il battito."
+ };
+ const text=naturalMap[step.name]||`${warm?"Riscaldamento":"Defaticamento"}. ${step.name}. ${step.tip||""}`;
+ if(speakCoachNative(text,true))return;
  if(ftCoachPlay(step.name))return;
- speakCoach(`${type==="warmup"?"Riscaldamento":"Defaticamento"}. ${step.name}. ${step.tip||""}`,true);
 }
 
 
@@ -3611,7 +3735,7 @@ function openSettings(){
  <div class="card pad">
   <button style="width:100%" onclick="if(confirm('Azzero tutti i dati salvati?')){clearAllFitData();modal.classList.add('hidden');renderHome()}">Azzera tutti i dati</button>
  </div>
- <div class="card pad"><p class="note">I dati vengono salvati localmente su questo dispositivo/browser.</p><p class="note"><b>Versione: V37 Final Functional Audit</b></p></div>`;
+ <div class="card pad"><p class="note">I dati vengono salvati localmente su questo dispositivo/browser.</p><p class="note"><b>Versione: V37.1 Coach Voice Quality & Selection</b></p></div>`;
  modal.classList.remove("hidden")
 }
 
