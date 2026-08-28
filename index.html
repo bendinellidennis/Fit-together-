@@ -2181,21 +2181,63 @@ function renderWorkoutMusic(){
  if(sb)sb.textContent=ftWorkoutAudio.paused?"▶ PLAY":"⏸ PAUSA";
 
 }
+
+/* V36.7.2 — restored complete music controls */
+let ftMusicAuto=localStorage.getItem("ftMusicAuto")!=="0";
+
+function musicNext(){
+ const was=ftWorkoutAudio.paused;
+ selectMusicTrack((ftMusicIndex+1)%ftMusicTracks.length);
+ if(was){setTimeout(()=>{try{const p=ftWorkoutAudio.play();if(p&&p.catch)p.catch(handleWorkoutAudioError);}catch(e){handleWorkoutAudioError(e)}},0);}
+}
+function musicPrev(){
+ const was=ftWorkoutAudio.paused;
+ selectMusicTrack((ftMusicIndex-1+ftMusicTracks.length)%ftMusicTracks.length);
+ if(was){setTimeout(()=>{try{const p=ftWorkoutAudio.play();if(p&&p.catch)p.catch(handleWorkoutAudioError);}catch(e){handleWorkoutAudioError(e)}},0);}
+}
+function musicRandom(){
+ if(ftMusicTracks.length<2)return;
+ let n=ftMusicIndex;
+ while(n===ftMusicIndex)n=Math.floor(Math.random()*ftMusicTracks.length);
+ selectMusicTrack(n);
+}
+function setWorkoutMusicVolume(v){
+ ftMusicVolume=Math.max(0,Math.min(1,(Number(v)||0)/100));
+ ftWorkoutAudio.volume=ftMusicVolume;
+ localStorage.setItem("ftMusicVolume",String(ftMusicVolume));
+ renderWorkoutMusic();
+}
+
 function toggleWorkoutMusic(){
- if(ftWorkoutAudio.paused){playWorkoutMusic();}
- else{ftWorkoutAudio.pause();renderWorkoutMusic();}
+ if(ftWorkoutAudio.paused){
+   ftWorkoutAudio.muted=false;
+   ftWorkoutAudio.volume=ftMusicVolume;
+   try{
+     const p=ftWorkoutAudio.play();
+     if(p&&p.catch)p.catch(handleWorkoutAudioError);
+   }catch(e){handleWorkoutAudioError(e);}
+ }else{
+   ftWorkoutAudio.pause();
+ }
+ renderWorkoutMusic();
 }
 function selectMusicTrack(v){
  const wasPlaying=!ftWorkoutAudio.paused;
  ftMusicIndex=Math.max(0,Math.min(ftMusicTracks.length-1,Number(v)||0));
  localStorage.setItem("ftMusicTrack",String(ftMusicIndex));
- ftWorkoutAudio.pause();
- ftWorkoutAudio.src=ftMusicTracks[ftMusicIndex];
- ftWorkoutAudio.currentTime=0;
- ftWorkoutAudio.muted=false;
- ftWorkoutAudio.volume=ftMusicVolume;
- if(wasPlaying){playWorkoutMusic();}
- else{renderWorkoutMusic();}
+ try{
+   ftWorkoutAudio.pause();
+   ftWorkoutAudio.src=ftMusicTracks[ftMusicIndex];
+   ftWorkoutAudio.load();
+   ftWorkoutAudio.muted=false;
+   ftWorkoutAudio.volume=ftMusicVolume;
+   ftWorkoutAudio.currentTime=0;
+   if(wasPlaying){
+     const p=ftWorkoutAudio.play();
+     if(p&&p.catch)p.catch(handleWorkoutAudioError);
+   }
+ }catch(e){handleWorkoutAudioError(e);}
+ renderWorkoutMusic();
 }
 function toggleMusicAuto(){
  ftMusicAuto=!ftMusicAuto;localStorage.setItem("ftMusicAuto",ftMusicAuto?"1":"0");renderWorkoutMusic();
@@ -2660,7 +2702,7 @@ function sessionMusicPlayerHtml(){
      <button onclick="musicNext()">⏭</button>
    </div>
    <div class="sessionMusicVol"><span style="font-size:9px">🔊</span><input id="musicSessionVolume" type="range" min="0" max="100" value="${Math.round(ftMusicVolume*100)}" oninput="setWorkoutMusicVolume(this.value)"><span id="musicSessionVolLabel" style="font-size:9px">${Math.round(ftMusicVolume*100)}%</span></div>
-   <div style="display:flex;gap:6px;margin-top:7px"><button style="flex:1" onclick="musicRandom()">🎲 CASUALE</button><button style="flex:1" onclick="toggleMusicAuto();renderWorkoutMusic()">🔁 AUTO</button></div>
+   <div style="display:flex;gap:6px;margin-top:7px"><button style="flex:1" onclick="musicRandom()">🎲 CASUALE</button><button style="flex:1" onclick="toggleMusicAuto();renderWorkoutMusic()">🔁 AUTO</button></div><button style="width:100%;margin-top:6px" onclick="speakCoach('Coach vocale funzionante. Buon allenamento!',true)">🔊 TEST VOCE</button>
  </div>`;
 }
 
@@ -3564,35 +3606,51 @@ function toggleGuidedPhases(){
  openSettings();
 }
 
-function voiceCoachEnabled(){return localStorage.getItem("ftVoiceCoach")==="1"}
+function voiceCoachEnabled(){
+ if(localStorage.getItem("ftVoiceCoach")===null)localStorage.setItem("ftVoiceCoach","1");
+ return localStorage.getItem("ftVoiceCoach")==="1";
+}
 function toggleVoiceCoach(){
  const on=voiceCoachEnabled();
- localStorage.setItem("ftVoiceCoach",on?"0":"1");
- if(on && "speechSynthesis" in window)window.speechSynthesis.cancel();
+ const next=!on;
+ localStorage.setItem("ftVoiceCoach",next?"1":"0");
+ if("speechSynthesis" in window){
+   try{window.speechSynthesis.cancel();}catch(e){}
+   if(next){
+     try{
+       const u=new SpeechSynthesisUtterance("Coach vocale attivo. Iniziamo.");
+       u.lang="it-IT";u.rate=.95;u.pitch=1;u.volume=1;
+       window.speechSynthesis.speak(u);
+     }catch(e){console.error("Voice coach test error",e);}
+   }
+ }
  updateVoiceButtons();
+ renderVoiceHome?.();
 }
 function updateVoiceButtons(){
  const on=voiceCoachEnabled();
  ["phaseVoiceBtn","sessionVoiceBtn","togetherVoiceBtn"].forEach(id=>{
    const b=document.getElementById(id);if(!b)return;
-   b.textContent=on?"🔊 VOCE":"🔇 VOCE";
+   b.textContent=on?"🔊 VOCE ON":"🔇 VOCE OFF";
    b.classList.toggle("on",on);
  });
  const s=document.getElementById("voiceSettingsState");
  if(s)s.textContent=on?"Coach vocale attivo":"Coach vocale disattivato";
 }
 function speakCoach(text,force=false){
- duckWorkoutMusic();
  if((!voiceCoachEnabled()&&!force) || !text || !("speechSynthesis" in window))return;
  try{
+   duckWorkoutMusic();
    window.speechSynthesis.cancel();
    const u=new SpeechSynthesisUtterance(String(text));
-   u.lang="it-IT";
-   u.rate=0.95;
-   u.pitch=1.0;
-   u.volume=1.0;
-   window.setTimeout(restoreWorkoutMusic,2200);speechSynthesis.speak(u);
- }catch(e){}
+   u.lang="it-IT";u.rate=.95;u.pitch=1;u.volume=1;
+   u.onend=restoreWorkoutMusic;
+   u.onerror=restoreWorkoutMusic;
+   window.speechSynthesis.speak(u);
+ }catch(e){
+   restoreWorkoutMusic();
+   console.error("Voice coach error",e);
+ }
 }
 function speakExerciseIntro(e){
  if(!e)return;
@@ -3665,7 +3723,7 @@ function openSettings(){
  <div class="card pad">
   <button style="width:100%" onclick="if(confirm('Azzero tutti i dati salvati?')){clearAllFitData();modal.classList.add('hidden');renderHome()}">Azzera tutti i dati</button>
  </div>
- <div class="card pad"><p class="note">I dati vengono salvati localmente su questo dispositivo/browser.</p><p class="note"><b>Versione: V36.7.1 Safari Direct Play Fix</b></p></div>`;
+ <div class="card pad"><p class="note">I dati vengono salvati localmente su questo dispositivo/browser.</p><p class="note"><b>Versione: V36.7.2 Audio Controls + Voice Coach Fix</b></p></div>`;
  modal.classList.remove("hidden")
 }
 
