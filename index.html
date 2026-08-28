@@ -617,14 +617,15 @@ main{max-width:720px;padding:14px 14px 108px}
   </div>
   
 <div class="voiceSelectWrap">
-  <label>🎙️ VOCE DEL COACH</label>
-  <select id="coachVoiceMode" class="voiceSelect" onchange="setCoachVoiceMode(this.value)">
-    <option value="male_energy">Maschile energica</option>
-    <option value="male_calm">Maschile calma</option>
-    <option value="female_energy">Femminile energica</option>
-    <option value="female_calm">Femminile calma</option>
+  <label>🎙️ VOCE REALE DEL COACH</label>
+  <select id="coachVoiceReal" class="voiceSelect" onchange="setCoachRealVoice(this.value)">
+    <option value="">Caricamento voci iPhone…</option>
   </select>
-  <div id="coachVoiceResolved" class="voiceHint">Seleziono automaticamente la migliore voce italiana disponibile su iPhone.</div>
+  <div id="coachVoiceResolved" class="voiceHint">Qui compaiono soltanto le voci italiane realmente installate sul tuo iPhone.</div>
+  <div class="voiceActions" style="margin-top:7px">
+    <button onclick="refreshCoachVoices()">↻ AGGIORNA VOCI</button>
+    <button onclick="testVoiceCoach()">▶ PROVA VOCE</button>
+  </div>
 </div>
 <div class="voiceActions">
     <button onclick="testVoiceCoach()">▶ PROVA VOCE</button>
@@ -3529,58 +3530,61 @@ function testVoiceCoach(){
 }
 
 
-const ftCoachVoiceModes={
- male_energy:{gender:"male",rate:1.02,pitch:.90,label:"Maschile energica"},
- male_calm:{gender:"male",rate:.92,pitch:.88,label:"Maschile calma"},
- female_energy:{gender:"female",rate:1.02,pitch:1.08,label:"Femminile energica"},
- female_calm:{gender:"female",rate:.92,pitch:1.05,label:"Femminile calma"}
-};
+
 let ftCachedVoices=[];
 
-function coachVoiceMode(){
- const v=localStorage.getItem("ftCoachVoiceMode")||"male_energy";
- return ftCoachVoiceModes[v]?v:"male_energy";
-}
-function setCoachVoiceMode(v){
- if(!ftCoachVoiceModes[v])v="male_energy";
- localStorage.setItem("ftCoachVoiceMode",v);
- renderCoachVoiceSelector();
- testVoiceCoach();
-}
 function loadCoachVoices(){
  try{ftCachedVoices=window.speechSynthesis?.getVoices?.()||[];}catch(e){ftCachedVoices=[];}
  renderCoachVoiceSelector();
 }
-function preferredItalianVoice(){
- const mode=ftCoachVoiceModes[coachVoiceMode()];
- const voices=ftCachedVoices.length?ftCachedVoices:(window.speechSynthesis?.getVoices?.()||[]);
- const it=voices.filter(v=>/^it(-|_)/i.test(v.lang||"") || /ital/i.test(v.name||""));
- if(!it.length)return null;
- const maleHints=/male|luca|paolo|marco|giorgio|fabio|diego|roberto|alessandro/i;
- const femaleHints=/female|alice|elsa|federica|anna|giulia|martina|silvia/i;
- let ranked=[...it];
- ranked.sort((a,b)=>{
-   const ah=mode.gender==="male"?(maleHints.test(a.name)?2:0):(femaleHints.test(a.name)?2:0);
-   const bh=mode.gender==="male"?(maleHints.test(b.name)?2:0):(femaleHints.test(b.name)?2:0);
-   const aq=(/premium|enhanced|compact|natural/i.test(a.name)?1:0);
-   const bq=(/premium|enhanced|compact|natural/i.test(b.name)?1:0);
-   return (bh+bq)-(ah+aq);
- });
- return ranked[0]||it[0];
+function italianCoachVoices(){
+ const all=ftCachedVoices.length?ftCachedVoices:(window.speechSynthesis?.getVoices?.()||[]);
+ return all.filter(v=>/^it(?:-|_)/i.test(v.lang||"") || /ital/i.test(v.name||""));
+}
+function coachVoiceId(v){
+ return `${v.name}|||${v.lang}`;
+}
+function selectedCoachVoice(){
+ const list=italianCoachVoices();
+ if(!list.length)return null;
+ const saved=localStorage.getItem("ftCoachRealVoice")||"";
+ return list.find(v=>coachVoiceId(v)===saved) || list[0];
+}
+function setCoachRealVoice(id){
+ localStorage.setItem("ftCoachRealVoice",id||"");
+ renderCoachVoiceSelector();
+ testVoiceCoach();
 }
 function renderCoachVoiceSelector(){
- const sel=document.getElementById("coachVoiceMode");
- if(sel)sel.value=coachVoiceMode();
+ const sel=document.getElementById("coachVoiceReal");
  const box=document.getElementById("coachVoiceResolved");
- if(box){
-   const v=preferredItalianVoice();
-   box.textContent=v?`Voce iPhone: ${v.name} · ${v.lang}`:"Nessuna voce italiana nativa rilevata: userò il fallback incorporato.";
+ if(!sel)return;
+ const list=italianCoachVoices();
+ const current=selectedCoachVoice();
+ if(!list.length){
+   sel.innerHTML='<option value="">Nessuna voce italiana rilevata</option>';
+   if(box)box.textContent="Safari non sta esponendo voci italiane. Il Coach userà il fallback incorporato.";
+   return;
  }
+ sel.innerHTML=list.map(v=>{
+   const id=coachVoiceId(v);
+   const label=`${v.name} · ${v.lang}${v.localService?" · iPhone":""}`;
+   return `<option value="${id.replace(/"/g,"&quot;")}" ${current&&id===coachVoiceId(current)?"selected":""}>${label}</option>`;
+ }).join("");
+ if(box)box.textContent=`Disponibili ${list.length} voci italiane reali. Se due nomi suonano uguali, iOS sta usando lo stesso motore vocale.`;
+}
+function refreshCoachVoices(){
+ try{
+   window.speechSynthesis?.cancel();
+   ftCachedVoices=window.speechSynthesis?.getVoices?.()||[];
+ }catch(e){ftCachedVoices=[];}
+ renderCoachVoiceSelector();
 }
 try{
  if("speechSynthesis" in window){
    window.speechSynthesis.onvoiceschanged=loadCoachVoices;
    setTimeout(loadCoachVoices,100);
+   setTimeout(loadCoachVoices,700);
  }
 }catch(e){}
 
@@ -3613,8 +3617,7 @@ function updateVoiceButtons(){
 function speakCoachNative(text,force=false){
  if((!voiceCoachEnabled()&&!force) || !text || !("speechSynthesis" in window))return false;
  try{
-   const mode=ftCoachVoiceModes[coachVoiceMode()];
-   const v=preferredItalianVoice();
+   const v=selectedCoachVoice();
    if(!v)return false;
    const m=document.getElementById("ftMusicNative");
    if(m&&!m.paused)m.volume=.18;
@@ -3622,8 +3625,8 @@ function speakCoachNative(text,force=false){
    const u=new SpeechSynthesisUtterance(String(text));
    u.lang=v.lang||"it-IT";
    u.voice=v;
-   u.rate=mode.rate;
-   u.pitch=mode.pitch;
+   u.rate=.97;
+   u.pitch=1;
    u.volume=1;
    u.onend=()=>{if(m)m.volume=1;};
    u.onerror=()=>{if(m)m.volume=1;};
@@ -3735,7 +3738,7 @@ function openSettings(){
  <div class="card pad">
   <button style="width:100%" onclick="if(confirm('Azzero tutti i dati salvati?')){clearAllFitData();modal.classList.add('hidden');renderHome()}">Azzera tutti i dati</button>
  </div>
- <div class="card pad"><p class="note">I dati vengono salvati localmente su questo dispositivo/browser.</p><p class="note"><b>Versione: V37.1 Coach Voice Quality & Selection</b></p></div>`;
+ <div class="card pad"><p class="note">I dati vengono salvati localmente su questo dispositivo/browser.</p><p class="note"><b>Versione: V37.2 Real iPhone Voice Picker</b></p></div>`;
  modal.classList.remove("hidden")
 }
 
