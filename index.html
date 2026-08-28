@@ -517,6 +517,18 @@ main{max-width:720px;padding:14px 14px 108px}
 .musicSelect{width:100%;background:#0b1420;color:#fff;border:1px solid #34475e;border-radius:10px;padding:8px;font-size:10px;font-weight:800}.musicVol{width:100%;margin-top:7px;accent-color:#8f70e3}
 .musicMini{display:flex;justify-content:space-between;font-size:8px;color:#8796aa;margin-top:3px}
 
+
+/* V36.4.1 – MUSIC PLAYER INSIDE WORKOUT */
+.sessionMusic{margin:0 0 12px 0;padding:10px 12px;border-radius:14px;background:linear-gradient(145deg,#201139,#111b2b);border:1px solid #754fe0}
+.sessionMusicHead{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.sessionMusicTitle{font-size:10px;font-weight:950;letter-spacing:.2px}
+.sessionMusicNow{font-size:9px;color:#c1b0f7;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:205px}
+.sessionMusicBtns{display:grid;grid-template-columns:40px 1fr 40px;gap:6px;margin-top:8px}
+.sessionMusicBtns button{height:35px;padding:0!important}
+.sessionMusicSelect{min-width:0;width:100%;background:#0b1420;color:#fff;border:1px solid #38495e;border-radius:10px;padding:7px;font-size:9px;font-weight:800}
+.sessionMusicVol{display:flex;align-items:center;gap:7px;margin-top:7px}
+.sessionMusicVol input{flex:1;accent-color:#8f70e3}
+
 </style><link rel="manifest" href="manifest.webmanifest">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -2118,6 +2130,13 @@ const ftWorkoutAudio=new Audio(ftMusicTracks[ftMusicIndex]);ftWorkoutAudio.loop=
 function renderWorkoutMusic(){
  const n=document.getElementById("musicNow"),s=document.getElementById("musicTrackSelect"),v=document.getElementById("musicVolume"),l=document.getElementById("musicVolLabel"),b=document.getElementById("musicTopToggle");
  if(n)n.textContent=ftMusicTitles[ftMusicIndex]+" · "+ftMusicBpms[ftMusicIndex]+" BPM";if(s)s.value=ftMusicIndex;if(v)v.value=Math.round(ftMusicVolume*100);if(l)l.textContent=Math.round(ftMusicVolume*100)+"%";if(b)b.textContent=ftWorkoutAudio.paused?"▶ PLAY":"⏸ PAUSA";const ab=document.getElementById("musicAutoBtn");if(ab)ab.textContent=ftMusicAuto?"🔁 AUTO ON":"🔁 AUTO OFF";
+ const sn=document.getElementById("musicSessionNow"),ss=document.getElementById("musicSessionSelect"),sv=document.getElementById("musicSessionVolume"),sl=document.getElementById("musicSessionVolLabel"),sb=document.getElementById("musicSessionToggle");
+ if(sn)sn.textContent=ftMusicTitles[ftMusicIndex]+" · "+ftMusicBpms[ftMusicIndex]+" BPM";
+ if(ss)ss.value=String(ftMusicIndex);
+ if(sv)sv.value=String(Math.round(ftMusicVolume*100));
+ if(sl)sl.textContent=Math.round(ftMusicVolume*100)+"%";
+ if(sb)sb.textContent=ftWorkoutAudio.paused?"▶ PLAY":"⏸ PAUSA";
+
 }
 function toggleWorkoutMusic(){if(ftWorkoutAudio.paused)ftWorkoutAudio.play().then(renderWorkoutMusic).catch(()=>{});else{ftWorkoutAudio.pause();renderWorkoutMusic();}}
 function selectMusicTrack(v){let play=!ftWorkoutAudio.paused;ftMusicIndex=Math.max(0,Math.min(ftMusicTracks.length-1,Number(v)||0));localStorage.setItem("ftMusicTrack",ftMusicIndex);ftWorkoutAudio.src=ftMusicTracks[ftMusicIndex];ftWorkoutAudio.loop=false;ftWorkoutAudio.volume=ftMusicVolume;if(play)ftWorkoutAudio.play().catch(()=>{});renderWorkoutMusic();}
@@ -2563,13 +2582,31 @@ function applySuggestedTarget(){
  speakCoach?.(`Target aggiornato a ${p.target} ripetizioni.`);
 }
 
+
+function sessionMusicPlayerHtml(){
+ const opts=ftMusicTracks.map((_,i)=>`<option value="${i}" ${i===ftMusicIndex?"selected":""}>${ftMusicTitles[i]} · ${ftMusicBpms[i]} BPM</option>`).join("");
+ return `<div class="sessionMusic">
+   <div class="sessionMusicHead">
+     <div><div class="sessionMusicTitle">🔥 MUSICA ALLENAMENTO</div><div id="musicSessionNow" class="sessionMusicNow">${ftMusicTitles[ftMusicIndex]} · ${ftMusicBpms[ftMusicIndex]} BPM</div></div>
+     <button id="musicSessionToggle" onclick="toggleWorkoutMusic()">${ftWorkoutAudio.paused?"▶ PLAY":"⏸ PAUSA"}</button>
+   </div>
+   <div class="sessionMusicBtns">
+     <button onclick="musicPrev()">⏮</button>
+     <select id="musicSessionSelect" class="sessionMusicSelect" onchange="selectMusicTrack(this.value)">${opts}</select>
+     <button onclick="musicNext()">⏭</button>
+   </div>
+   <div class="sessionMusicVol"><span style="font-size:9px">🔊</span><input id="musicSessionVolume" type="range" min="0" max="100" value="${Math.round(ftMusicVolume*100)}" oninput="setWorkoutMusicVolume(this.value)"><span id="musicSessionVolLabel" style="font-size:9px">${Math.round(ftMusicVolume*100)}%</span></div>
+   <div style="display:flex;gap:6px;margin-top:7px"><button style="flex:1" onclick="musicRandom()">🎲 CASUALE</button><button style="flex:1" onclick="toggleMusicAuto();renderWorkoutMusic()">🔁 AUTO</button></div>
+ </div>`;
+}
+
 function renderExercise(){
  clearInterval(timerInt);
  let w=plans[profile][currentDay],e=w.ex[exIndex],inf=exerciseInfo(e);
  sessionTitle.textContent=w.name;sessionPlace.textContent=w.place;
  let total=w.ex.length, pct=Math.round(exIndex/total*100); guideBar.style.width=pct+"%";guideLabel.textContent=`Esercizio ${exIndex+1} di ${total}`;
  let dots=Array.from({length:e[1]},(_,i)=>`<span class="setDot ${i<setDone?'done':i===setDone?'now':''}"></span>`).join("");
- exerciseView.innerHTML=`<div class="card pad">
+ exerciseView.innerHTML=`${sessionMusicPlayerHtml()}<div class="card pad">
  <div class="exerciseHeader">${e[0]}</div>
  <div class="exerciseMeta"><span class="chip">${e[4]}</span><span class="chip">${e[1]} serie</span><span class="chip">${e[2]}</span></div>
  ${progressionBox(e)}${lastTimeBox(e)}${ftSmartBox(e)}<div class="swapGrid"><button class="outline" onclick="applySuggestedTarget()">⚙️ USA TARGET</button><button class="outline" onclick="openExerciseSwap()">🔄 SOSTITUISCI</button></div>${mediaBlock(e[5],e[0])}
@@ -2590,6 +2627,7 @@ function renderExercise(){
  window.currentTip=e;
 
  updateVoiceButtons();
+ renderWorkoutMusic();
  setTimeout(()=>speakExerciseIntro(e),180);
 }
 function showTip(which){
@@ -3563,7 +3601,7 @@ function openSettings(){
  <div class="card pad">
   <button style="width:100%" onclick="if(confirm('Azzero tutti i dati salvati?')){clearAllFitData();modal.classList.add('hidden');renderHome()}">Azzera tutti i dati</button>
  </div>
- <div class="card pad"><p class="note">I dati vengono salvati localmente su questo dispositivo/browser.</p><p class="note"><b>Versione: V36.4 Motivational Music Library</b></p></div>`;
+ <div class="card pad"><p class="note">I dati vengono salvati localmente su questo dispositivo/browser.</p><p class="note"><b>Versione: V36.4.1 In-Workout Music</b></p></div>`;
  modal.classList.remove("hidden")
 }
 
