@@ -354,6 +354,17 @@ main{max-width:720px;padding:14px 14px 108px}
 .summaryPR{display:inline-block;background:#4c347e;border-radius:999px;padding:6px 9px;font-size:10px;font-weight:900;margin:3px}
 .summaryActions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
 
+
+/* V27 LAST TIME COACH */
+.lastTimeBox{background:linear-gradient(145deg,#101827,#19142c);border:1px solid #5d47a7;border-radius:16px;padding:12px;margin:10px 0}
+.lastTimeHead{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.lastTimeGrid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin-top:9px}
+.lastTimeStat{background:#0d1723;border:1px solid #29394f;border-radius:12px;padding:9px;text-align:center}
+.lastTimeStat b{display:block;font-size:16px}
+.lastTimeStat span{font-size:9px;color:#9eabba}
+.lastTarget{margin-top:9px;background:#171126;border-radius:12px;padding:9px;font-size:11px;line-height:1.45}
+.trendUp{color:#a8ffbd}.trendFlat{color:#ffd88a}
+
 </style><link rel="manifest" href="manifest.webmanifest">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -656,7 +667,7 @@ function renderTogetherExercise(){
  const who=st.turn,e=tcEx(who);if(!e){switchTogether();return}
  const whoLabel=who==="dad"?"👨 TU":"👧 FIGLIA",setsDone=who==="dad"?st.dadSet:st.girlSet,info=exerciseInfo(e);
  speakCoach(`Tocca a ${who==="dad"?"te":"tua figlia"}. ${e[0]}.`);
- togetherExerciseView.innerHTML=`<div class="card pad"><span class="turnBadge">TOCCA A ${whoLabel}</span><div class="exerciseHeader" style="margin-top:8px">${e[0]}</div><div class="exerciseMeta"><span class="chip">${e[4]}</span><span class="chip">${e[1]} serie</span><span class="chip">${e[2]}</span></div>${ftSmartBox(e)}<button class="outline" style="width:100%;margin:8px 0" onclick="openTogetherSwap()">🔄 SOSTITUISCI ESERCIZIO</button>${mediaBlock(e[5],e[0])}<div class="infoPanel">${e[6]}</div><div class="levels"><div class="level"><b>⬇️ PIÙ FACILE</b><br>${info.easy}</div><div class="level"><b>⬆️ PIÙ DIFFICILE</b><br>${info.hard}</div></div></div>
+ togetherExerciseView.innerHTML=`<div class="card pad"><span class="turnBadge">TOCCA A ${whoLabel}</span><div class="exerciseHeader" style="margin-top:8px">${e[0]}</div><div class="exerciseMeta"><span class="chip">${e[4]}</span><span class="chip">${e[1]} serie</span><span class="chip">${e[2]}</span></div>${lastTimeBox(e)}${ftSmartBox(e)}<button class="outline" style="width:100%;margin:8px 0" onclick="openTogetherSwap()">🔄 SOSTITUISCI ESERCIZIO</button>${mediaBlock(e[5],e[0])}<div class="infoPanel">${e[6]}</div><div class="levels"><div class="level"><b>⬇️ PIÙ FACILE</b><br>${info.easy}</div><div class="level"><b>⬆️ PIÙ DIFFICILE</b><br>${info.hard}</div></div></div>
  <div class="card pad"><div class="guideRow"><b>Serie di ${whoLabel}</b><b>${setsDone}/${e[1]}</b></div><div class="recordBox" style="margin-top:10px"><div><div class="sub">Ripetizioni</div><input id="togetherReps" class="input" inputmode="numeric" placeholder="es. 12"></div><div><div class="sub">Note / carico</div><input id="togetherNote" class="input" placeholder="opzionale"></div></div><div class="rpeSelect" id="togetherRpe"><button onclick="pickTogetherRPE(1,this)">🙂</button><button onclick="pickTogetherRPE(2,this)">😊</button><button onclick="pickTogetherRPE(3,this)">😐</button><button onclick="pickTogetherRPE(4,this)">😓</button><button onclick="pickTogetherRPE(5,this)">🥵</button></div><button class="green bigAction" style="margin-top:12px" onclick="completeTogetherSet()">✓ SERIE COMPLETATA</button></div>`;
  st.currentRPE=0;
 }
@@ -1629,6 +1640,55 @@ function applyExerciseSwap(i){
  speakCoach?.(`Esercizio sostituito con ${replacement[0]}.`);
 }
 
+
+function exerciseHistory(name){
+ const sessions=(db.sessions||[]).filter(s=>{
+   if(s.profile && s.profile!==profile)return false;
+   return (s.sets||[]).some(x=>x.exercise===name);
+ });
+ const rows=[];
+ sessions.forEach(s=>{
+   const sets=(s.sets||[]).filter(x=>x.exercise===name);
+   if(!sets.length)return;
+   const r=sets.map(x=>Number(x.rpe)||0).filter(Boolean);
+   rows.push({
+     date:s.date||s.startedAt||s.createdAt||0,
+     sets:sets.length,
+     totalReps:sets.reduce((a,x)=>a+(Number(x.reps)||0),0),
+     bestReps:Math.max(...sets.map(x=>Number(x.reps)||0)),
+     avgRpe:r.length?r.reduce((a,b)=>a+b,0)/r.length:0
+   });
+ });
+ return rows;
+}
+function lastTimeData(e){
+ const rows=exerciseHistory(e[0]);
+ const last=rows.length?rows[rows.length-1]:null;
+ const best=rows.length?Math.max(...rows.map(x=>x.bestReps||0)):0;
+ let target=Number(e[2])||0;
+ if(last){
+   if(last.avgRpe>0 && last.avgRpe<=3.2)target=Math.max(target,last.bestReps+1);
+   else target=Math.max(target,last.bestReps);
+ }
+ return {last,best,target,count:rows.length};
+}
+function lastTimeBox(e){
+ const d=lastTimeData(e);
+ if(!d.last){
+   return `<div class="lastTimeBox"><div class="lastTimeHead"><b>📈 Last Time Coach</b><span class="scheduleBadge">PRIMA VOLTA</span></div><div class="lastTarget">Nessun precedente per questo esercizio. Oggi creiamo il tuo riferimento iniziale.</div></div>`;
+ }
+ const trend=d.target>d.last.bestReps?"trendUp":"trendFlat";
+ return `<div class="lastTimeBox">
+  <div class="lastTimeHead"><b>📈 Last Time Coach</b><span class="scheduleBadge">${d.count} SESSIONI</span></div>
+  <div class="lastTimeGrid">
+   <div class="lastTimeStat"><b>${d.last.bestReps}</b><span>ULTIMA MIGLIORE</span></div>
+   <div class="lastTimeStat"><b>${d.best}</b><span>RECORD</span></div>
+   <div class="lastTimeStat"><b>${d.last.avgRpe?d.last.avgRpe.toFixed(1):"-"}</b><span>ULTIMO RPE</span></div>
+  </div>
+  <div class="lastTarget ${trend}"><b>🎯 Oggi:</b> prova ${d.target} ripetizioni mantenendo tecnica pulita. ${d.target>d.last.bestReps?"Se riesce bene, è progressione reale.":"Conferma prima qualità e controllo."}</div>
+ </div>`;
+}
+
 function renderExercise(){
  clearInterval(timerInt);
  let w=plans[profile][currentDay],e=w.ex[exIndex],inf=exerciseInfo(e);
@@ -1638,7 +1698,7 @@ function renderExercise(){
  exerciseView.innerHTML=`<div class="card pad">
  <div class="exerciseHeader">${e[0]}</div>
  <div class="exerciseMeta"><span class="chip">${e[4]}</span><span class="chip">${e[1]} serie</span><span class="chip">${e[2]}</span></div>
- ${ftSmartBox(e)}<button class="outline" style="width:100%;margin:8px 0" onclick="openExerciseSwap()">🔄 SOSTITUISCI ESERCIZIO</button>${mediaBlock(e[5],e[0])}
+ ${lastTimeBox(e)}${ftSmartBox(e)}<button class="outline" style="width:100%;margin:8px 0" onclick="openExerciseSwap()">🔄 SOSTITUISCI ESERCIZIO</button>${mediaBlock(e[5],e[0])}
  <div class="tabs"><button id="tabHow" class="on" onclick="showTip('how')">COME FARLO</button><button id="tabErr" onclick="showTip('err')">ERRORI</button><button id="tabMus" onclick="showTip('mus')">MUSCOLI</button></div>
  <div id="tipPanel" class="infoPanel">${e[6]}</div>
  <div class="levels"><div class="level"><b>⬇️ PIÙ FACILE</b><br>${inf.easy}</div><div class="level"><b>⬆️ PIÙ DIFFICILE</b><br>${inf.hard}</div></div>
@@ -2501,7 +2561,7 @@ function openSettings(){
  <div class="card pad">
   <button style="width:100%" onclick="if(confirm('Azzero tutti i dati salvati?')){clearAllFitData();modal.classList.add('hidden');renderHome()}">Azzera tutti i dati</button>
  </div>
- <div class="card pad"><p class="note">I dati vengono salvati localmente su questo dispositivo/browser.</p><p class="note"><b>Versione: V26 Smart Session Summary</b></p></div>`;
+ <div class="card pad"><p class="note">I dati vengono salvati localmente su questo dispositivo/browser.</p><p class="note"><b>Versione: V27 Last Time Coach</b></p></div>`;
  modal.classList.remove("hidden")
 }
 
