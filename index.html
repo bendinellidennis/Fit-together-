@@ -415,6 +415,21 @@ main{max-width:720px;padding:14px 14px 108px}
 .deloadStat span{font-size:9px;color:#9eabba}
 .deloadAdvice{background:#171126;border-radius:12px;padding:9px;margin-top:9px;font-size:11px;line-height:1.45}
 
+
+/* V32 EXERCISE BALANCE */
+.balanceBox{background:linear-gradient(145deg,#101827,#1b1730);border:1px solid #6652ad;border-radius:18px;padding:13px;margin:12px 0}
+.balanceTop{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.balanceStatus{display:inline-block;border-radius:999px;padding:5px 8px;font-size:10px;font-weight:900}
+.balanceStatus.good{background:#173523;color:#a8ffbd}
+.balanceStatus.watch{background:#3d3217;color:#ffe2a0}
+.balanceStatus.fix{background:#462126;color:#ffc1c1}
+.balanceRows{display:grid;gap:7px;margin-top:10px}
+.balanceRow{background:#0d1723;border:1px solid #2b3b51;border-radius:12px;padding:9px}
+.balanceRowTop{display:flex;justify-content:space-between;align-items:center;font-size:11px;margin-bottom:6px}
+.balanceBar{height:7px;background:#1c2735;border-radius:999px;overflow:hidden}
+.balanceFill{height:100%;background:linear-gradient(90deg,#6b4ec2,#a984ff)}
+.balanceAdvice{background:#171126;border-radius:12px;padding:9px;margin-top:9px;font-size:11px;line-height:1.45}
+
 </style><link rel="manifest" href="manifest.webmanifest">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -504,6 +519,11 @@ main{max-width:720px;padding:14px 14px 108px}
 <div class="deloadBox">
   <div id="deloadHome"></div>
 </div>
+
+<div class="balanceBox">
+  <div id="balanceHome"></div>
+</div>
+
 
 
 
@@ -1560,6 +1580,13 @@ function todayCoachChoice(){
    candidate=keys.find(k=>!recent.includes(k)) || keys[(wk.sessions||0)%keys.length] || keys[0];
  }
 
+
+ const bal=balanceAssessment();
+ if(bal.focus && bal.state!=="BILANCIATO" && bal.state!=="DATI LIMITATI"){
+   const bday=balanceSuggestedDay();
+   if(bday && plans[profile][bday])candidate=bday;
+ }
+
  // If recovery state, prefer shorter / lower-volume option.
  if(rd.intensity==="RECUPERO" || Number(rd.score||100)<50){
    const scored=keys.map(k=>{
@@ -1593,6 +1620,7 @@ function todayCoachChoice(){
 
  let reason=[];
  if(deload)reason.push(`scarico attivo ${deload.reduction}%`);
+ if(bal.focus && bal.state!=="BILANCIATO" && bal.state!=="DATI LIMITATI")reason.push(`riequilibrio ${bal.focus}`);
  if(Number(rd.score||0)>=80)reason.push("Readiness alta");
  else if(Number(rd.score||0)>=60)reason.push("Readiness buona");
  else reason.push("Readiness da gestire");
@@ -1749,6 +1777,107 @@ function applyDeloadToWorkout(w){
  return clone;
 }
 
+
+function balanceTagForExercise(name){
+ const n=String(name||"").toLowerCase();
+ if(/squat|affond|lunge|calf|stacco|deadlift|hip hinge|ponte|glute/.test(n))return "GAMBE";
+ if(/push|press|piegament|shoulder|dip/.test(n))return "SPINTA";
+ if(/row|remator|tirat|pull/.test(n))return "TIRATA";
+ if(/plank|core|crunch|dead bug|mountain climber/.test(n))return "CORE";
+ if(/burpee|full|thruster/.test(n))return "FULL";
+ return "ALTRO";
+}
+function balanceStats(days=21){
+ const since=Date.now()-days*86400000;
+ const counts={GAMBE:0,SPINTA:0,TIRATA:0,CORE:0,FULL:0,ALTRO:0};
+ const sessions=(db.sessions||[]).filter(s=>{
+   if(s.profile && s.profile!==profile)return false;
+   return Number(s.startedAt||s.createdAt||s.date||0)>=since;
+ });
+ sessions.forEach(s=>(s.sets||[]).forEach(x=>{
+   const tag=balanceTagForExercise(x.exercise);
+   counts[tag]=(counts[tag]||0)+1;
+ }));
+ const tracked=["GAMBE","SPINTA","TIRATA","CORE","FULL"];
+ const total=tracked.reduce((a,k)=>a+(counts[k]||0),0);
+ const pct={};
+ tracked.forEach(k=>pct[k]=total?Math.round((counts[k]||0)*100/total):0);
+ return {counts,pct,total,sessions:sessions.length};
+}
+function balanceAssessment(){
+ const s=balanceStats(21);
+ const p=s.pct;
+ const vals=["GAMBE","SPINTA","TIRATA","CORE"].map(k=>p[k]||0);
+ const max=Math.max(...vals),min=Math.min(...vals);
+ let state="BILANCIATO",cls="good";
+ let focus=null,over=null;
+
+ if(s.total<8){
+   state="DATI LIMITATI";cls="watch";
+ }else{
+   const keys=["GAMBE","SPINTA","TIRATA","CORE"];
+   focus=keys.slice().sort((a,b)=>(p[a]||0)-(p[b]||0))[0];
+   over=keys.slice().sort((a,b)=>(p[b]||0)-(p[a]||0))[0];
+   if(max-min>=28){state="DA CORREGGERE";cls="fix";}
+   else if(max-min>=18){state="ATTENZIONE";cls="watch";}
+ }
+
+ let advice="Distribuzione buona: continua a ruotare i gruppi senza concentrare tutto sulle stesse aree.";
+ if(state==="DATI LIMITATI")advice="Servono ancora alcune sessioni per valutare davvero l'equilibrio del programma.";
+ if(state==="ATTENZIONE")advice=`Nei prossimi workout dai un po' più spazio a ${focus} e limita leggermente ${over}.`;
+ if(state==="DA CORREGGERE")advice=`Squilibrio evidente: priorità a ${focus} per le prossime 1–2 sessioni, senza aumentare ancora ${over}.`;
+
+ if(profile==="girl" && state!=="DATI LIMITATI"){
+   advice += " Mantieni comunque volumi moderati e attenzione alla tecnica.";
+ }
+ return {...s,state,cls,focus,over,advice};
+}
+function renderBalanceHome(){
+ const box=document.getElementById("balanceHome");if(!box)return;
+ const a=balanceAssessment();
+ const keys=["GAMBE","SPINTA","TIRATA","CORE","FULL"];
+ box.innerHTML=`<div class="balanceTop">
+   <div><b>⚖️ Exercise Balance</b><div class="sub">Equilibrio ultimi 21 giorni.</div></div>
+   <span class="balanceStatus ${a.cls}">${a.state}</span>
+ </div>
+ <div class="balanceRows">
+   ${keys.map(k=>`<div class="balanceRow"><div class="balanceRowTop"><span>${k}</span><b>${a.pct[k]||0}%</b></div><div class="balanceBar"><div class="balanceFill" style="width:${Math.min(100,a.pct[k]||0)}%"></div></div></div>`).join("")}
+ </div>
+ <div class="balanceAdvice">${a.advice}</div>
+ <button style="width:100%;margin-top:9px" onclick="openBalanceDetail()">VEDI DETTAGLIO</button>`;
+}
+function openBalanceDetail(){
+ const a=balanceAssessment(),keys=["GAMBE","SPINTA","TIRATA","CORE","FULL"];
+ sheet.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center"><h2>⚖️ Exercise Balance</h2><button onclick="modal.classList.add('hidden')">✕</button></div>
+ <div class="summaryHero"><div class="sub">ULTIMI 21 GIORNI</div><div class="summaryScore">${a.sessions}</div><div class="summaryLabel">SESSIONI ANALIZZATE</div></div>
+ <div class="balanceRows">${keys.map(k=>`<div class="balanceRow"><div class="balanceRowTop"><span>${k}</span><b>${a.counts[k]||0} serie · ${a.pct[k]||0}%</b></div><div class="balanceBar"><div class="balanceFill" style="width:${Math.min(100,a.pct[k]||0)}%"></div></div></div>`).join("")}</div>
+ <div class="balanceAdvice"><b>🧠 Coach</b><div class="sub" style="margin-top:6px">${a.advice}</div></div>
+ ${a.focus?`<button class="primary" style="width:100%;margin-top:10px" onclick="startBalanceSuggested()">ALLENAMENTO CONSIGLIATO ▶</button>`:""}`;
+ modal.classList.remove("hidden");
+}
+function workoutBalanceScore(day,focus){
+ const w=plans[profile]?.[day];if(!w)return -999;
+ let score=0;
+ (w.ex||[]).forEach(e=>{
+   const tag=balanceTagForExercise(e[0]);
+   if(tag===focus)score+=3;
+   if(tag==="FULL")score+=1;
+ });
+ return score;
+}
+function balanceSuggestedDay(){
+ const a=balanceAssessment();
+ if(!a.focus)return null;
+ const keys=Object.keys(plans[profile]||{});
+ return keys.sort((x,y)=>workoutBalanceScore(y,a.focus)-workoutBalanceScore(x,a.focus))[0]||null;
+}
+function startBalanceSuggested(){
+ const day=balanceSuggestedDay();
+ if(!day){alert("Nessun workout adatto trovato.");return}
+ modal.classList.add("hidden");
+ start(day);
+}
+
 function renderHome(){
  updateOfflineStatus();
  setTimeout(renderPlannerHome,0);
@@ -1761,6 +1890,7 @@ function renderHome(){
  setTimeout(renderWeeklyReportHome,0);
  setTimeout(renderTodayCoach,0);
  setTimeout(renderDeloadHome,0);
+ setTimeout(renderBalanceHome,0);
  const D=id=>document.getElementById(id);
  D("dadBtn").classList.toggle("active",profile==="dad");
  D("girlBtn").classList.toggle("active",profile==="girl");
@@ -3048,7 +3178,7 @@ function openSettings(){
  <div class="card pad">
   <button style="width:100%" onclick="if(confirm('Azzero tutti i dati salvati?')){clearAllFitData();modal.classList.add('hidden');renderHome()}">Azzera tutti i dati</button>
  </div>
- <div class="card pad"><p class="note">I dati vengono salvati localmente su questo dispositivo/browser.</p><p class="note"><b>Versione: V31 Deload Recovery Week</b></p></div>`;
+ <div class="card pad"><p class="note">I dati vengono salvati localmente su questo dispositivo/browser.</p><p class="note"><b>Versione: V32 Exercise Balance</b></p></div>`;
  modal.classList.remove("hidden")
 }
 
