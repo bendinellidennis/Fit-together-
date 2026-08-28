@@ -389,6 +389,18 @@ main{max-width:720px;padding:14px 14px 108px}
 .todayStat span{font-size:9px;color:#9fabbc}
 .todayWhy{margin-top:10px;background:#111927;border-radius:13px;padding:10px;font-size:11px;line-height:1.45;color:#b7c1cf}
 
+
+/* V30 SMART PROGRESSION ENGINE */
+.progressionBox{background:linear-gradient(145deg,#111827,#1d1632);border:1px solid #684eb4;border-radius:16px;padding:12px;margin:10px 0}
+.progressionHead{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.progressionBadge{display:inline-block;border-radius:999px;padding:5px 8px;font-size:10px;font-weight:900;background:#3f326c}
+.progressionGrid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin-top:9px}
+.progressionStat{background:#0d1723;border:1px solid #2c3c52;border-radius:12px;padding:9px;text-align:center}
+.progressionStat b{display:block;font-size:16px}
+.progressionStat span{font-size:9px;color:#9eabba}
+.progressionAdvice{margin-top:9px;background:#171126;border-radius:12px;padding:9px;font-size:11px;line-height:1.45}
+.progressionUp{color:#a8ffbd}.progressionHold{color:#ffd88a}.progressionDown{color:#ffb0ad}
+
 </style><link rel="manifest" href="manifest.webmanifest">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -705,7 +717,7 @@ function renderTogetherExercise(){
  const who=st.turn,e=tcEx(who);if(!e){switchTogether();return}
  const whoLabel=who==="dad"?"👨 TU":"👧 FIGLIA",setsDone=who==="dad"?st.dadSet:st.girlSet,info=exerciseInfo(e);
  speakCoach(`Tocca a ${who==="dad"?"te":"tua figlia"}. ${e[0]}.`);
- togetherExerciseView.innerHTML=`<div class="card pad"><span class="turnBadge">TOCCA A ${whoLabel}</span><div class="exerciseHeader" style="margin-top:8px">${e[0]}</div><div class="exerciseMeta"><span class="chip">${e[4]}</span><span class="chip">${e[1]} serie</span><span class="chip">${e[2]}</span></div>${lastTimeBox(e)}${ftSmartBox(e)}<button class="outline" style="width:100%;margin:8px 0" onclick="openTogetherSwap()">🔄 SOSTITUISCI ESERCIZIO</button>${mediaBlock(e[5],e[0])}<div class="infoPanel">${e[6]}</div><div class="levels"><div class="level"><b>⬇️ PIÙ FACILE</b><br>${info.easy}</div><div class="level"><b>⬆️ PIÙ DIFFICILE</b><br>${info.hard}</div></div></div>
+ togetherExerciseView.innerHTML=`<div class="card pad"><span class="turnBadge">TOCCA A ${whoLabel}</span><div class="exerciseHeader" style="margin-top:8px">${e[0]}</div><div class="exerciseMeta"><span class="chip">${e[4]}</span><span class="chip">${e[1]} serie</span><span class="chip">${e[2]}</span></div>${progressionBox(e)}${lastTimeBox(e)}${ftSmartBox(e)}<button class="outline" style="width:100%;margin:8px 0" onclick="openTogetherSwap()">🔄 SOSTITUISCI ESERCIZIO</button>${mediaBlock(e[5],e[0])}<div class="infoPanel">${e[6]}</div><div class="levels"><div class="level"><b>⬇️ PIÙ FACILE</b><br>${info.easy}</div><div class="level"><b>⬆️ PIÙ DIFFICILE</b><br>${info.hard}</div></div></div>
  <div class="card pad"><div class="guideRow"><b>Serie di ${whoLabel}</b><b>${setsDone}/${e[1]}</b></div><div class="recordBox" style="margin-top:10px"><div><div class="sub">Ripetizioni</div><input id="togetherReps" class="input" inputmode="numeric" placeholder="es. 12"></div><div><div class="sub">Note / carico</div><input id="togetherNote" class="input" placeholder="opzionale"></div></div><div class="rpeSelect" id="togetherRpe"><button onclick="pickTogetherRPE(1,this)">🙂</button><button onclick="pickTogetherRPE(2,this)">😊</button><button onclick="pickTogetherRPE(3,this)">😐</button><button onclick="pickTogetherRPE(4,this)">😓</button><button onclick="pickTogetherRPE(5,this)">🥵</button></div><button class="green bigAction" style="margin-top:12px" onclick="completeTogetherSet()">✓ SERIE COMPLETATA</button></div>`;
  st.currentRPE=0;
 }
@@ -889,6 +901,7 @@ function fitStorageKeys(){
       k==="ftGuidedPhases" ||
       k==="ftVoiceCoach" ||
       k==="ftSmartRest" ||
+      k==="ftSmartProgression" ||
       k.startsWith("ftDraft_") ||
       k.startsWith("ftBody_") ||
       k.startsWith("ftNutrition_") ||
@@ -1928,6 +1941,97 @@ function lastTimeBox(e){
  </div>`;
 }
 
+
+function progressionHistory(name){
+ const rows=[];
+ (db.sessions||[]).forEach(s=>{
+   if(s.profile && s.profile!==profile)return;
+   const sets=(s.sets||[]).filter(x=>x.exercise===name);
+   if(!sets.length)return;
+   const reps=sets.map(x=>Number(x.reps)||0);
+   const rpes=sets.map(x=>Number(x.rpe)||0).filter(Boolean);
+   rows.push({
+     t:Number(s.startedAt||s.createdAt||s.date||0),
+     best:Math.max(...reps),
+     avg:reps.reduce((a,b)=>a+b,0)/Math.max(1,reps.length),
+     rpe:rpes.length?rpes.reduce((a,b)=>a+b,0)/rpes.length:0,
+     sets:sets.length
+   });
+ });
+ return rows.sort((a,b)=>a.t-b.t);
+}
+function smartProgression(e){
+ const hist=progressionHistory(e[0]);
+ const last=hist[hist.length-1]||null;
+ const prev=hist[hist.length-2]||null;
+ const baseTarget=Number(e[2])||0;
+ let target=baseTarget,action="MANTIENI",delta=0,reason="Crea un riferimento pulito prima di aumentare.";
+
+ if(last){
+   const easy=last.rpe>0 && last.rpe<=3.2;
+   const hard=last.rpe>=4.6;
+   const improving=prev && last.best>prev.best;
+   const stable=prev && last.best>=prev.best;
+
+   if(hard){
+     delta=profile==="girl"?0:-1;
+     target=Math.max(1,last.best+delta);
+     action=delta<0?"RIDUCI":"MANTIENI";
+     reason="L'ultima sessione è stata molto impegnativa: prima consolida tecnica e controllo.";
+   }else if(easy && stable){
+     delta=profile==="girl"?1:Math.min(2,Math.max(1,Math.round(last.best*0.05)));
+     target=Math.max(baseTarget,last.best+delta);
+     action="AUMENTA";
+     reason="RPE gestibile e prestazione stabile: piccola progressione consigliata.";
+   }else if(improving){
+     delta=1;
+     target=Math.max(baseTarget,last.best+delta);
+     action="AUMENTA";
+     reason="La prestazione sta salendo: puoi provare una progressione minima.";
+   }else{
+     target=Math.max(baseTarget,last.best);
+     action="MANTIENI";
+     reason="Conferma il risultato prima di aumentare ancora.";
+   }
+ }
+
+ if(profile==="girl"){
+   // Conservative cap for teen profile: never suggest more than +1 rep from last best.
+   if(last)target=Math.min(target,last.best+1);
+ }
+ const cls=action==="AUMENTA"?"progressionUp":action==="RIDUCI"?"progressionDown":"progressionHold";
+ return {hist,last,prev,target,action,delta,reason,cls};
+}
+function progressionBox(e){
+ if(localStorage.getItem("ftSmartProgression")==="0")return "";
+ const p=smartProgression(e);
+ if(!p.last){
+   return `<div class="progressionBox">
+     <div class="progressionHead"><b>⚙️ Smart Progression</b><span class="progressionBadge">BASELINE</span></div>
+     <div class="progressionAdvice">Prima sessione utile per questo esercizio: registra bene ripetizioni e RPE. La prossima volta il motore potrà proporti una progressione.</div>
+   </div>`;
+ }
+ return `<div class="progressionBox">
+   <div class="progressionHead"><b>⚙️ Smart Progression</b><span class="progressionBadge ${p.cls}">${p.action}</span></div>
+   <div class="progressionGrid">
+     <div class="progressionStat"><b>${p.last.best}</b><span>ULTIMO BEST</span></div>
+     <div class="progressionStat"><b>${p.last.rpe?p.last.rpe.toFixed(1):"-"}</b><span>ULTIMO RPE</span></div>
+     <div class="progressionStat"><b>${p.target}</b><span>TARGET OGGI</span></div>
+   </div>
+   <div class="progressionAdvice ${p.cls}">${p.reason}</div>
+ </div>`;
+}
+function applySuggestedTarget(){
+ const w=sessionWorkout||plans[profile][currentDay];
+ if(!w||!w.ex||!w.ex[exIndex])return;
+ const e=w.ex[exIndex],p=smartProgression(e);
+ e[2]=p.target;
+ sessionWorkout=w;
+ saveLiveDraft?.();
+ renderExercise();
+ speakCoach?.(`Target aggiornato a ${p.target} ripetizioni.`);
+}
+
 function renderExercise(){
  clearInterval(timerInt);
  let w=plans[profile][currentDay],e=w.ex[exIndex],inf=exerciseInfo(e);
@@ -1937,7 +2041,7 @@ function renderExercise(){
  exerciseView.innerHTML=`<div class="card pad">
  <div class="exerciseHeader">${e[0]}</div>
  <div class="exerciseMeta"><span class="chip">${e[4]}</span><span class="chip">${e[1]} serie</span><span class="chip">${e[2]}</span></div>
- ${lastTimeBox(e)}${ftSmartBox(e)}<button class="outline" style="width:100%;margin:8px 0" onclick="openExerciseSwap()">🔄 SOSTITUISCI ESERCIZIO</button>${mediaBlock(e[5],e[0])}
+ ${progressionBox(e)}${lastTimeBox(e)}${ftSmartBox(e)}<div class="swapGrid"><button class="outline" onclick="applySuggestedTarget()">⚙️ USA TARGET</button><button class="outline" onclick="openExerciseSwap()">🔄 SOSTITUISCI</button></div>${mediaBlock(e[5],e[0])}
  <div class="tabs"><button id="tabHow" class="on" onclick="showTip('how')">COME FARLO</button><button id="tabErr" onclick="showTip('err')">ERRORI</button><button id="tabMus" onclick="showTip('mus')">MUSCOLI</button></div>
  <div id="tipPanel" class="infoPanel">${e[6]}</div>
  <div class="levels"><div class="level"><b>⬇️ PIÙ FACILE</b><br>${inf.easy}</div><div class="level"><b>⬆️ PIÙ DIFFICILE</b><br>${inf.hard}</div></div>
@@ -2756,10 +2860,17 @@ function toggleSmartRest(){
  localStorage.setItem("ftSmartRest",off?"1":"0");
  openSettings();
 }
+
+function toggleSmartProgression(){
+ const off=localStorage.getItem("ftSmartProgression")==="0";
+ localStorage.setItem("ftSmartProgression",off?"1":"0");
+ openSettings();
+}
 function openSettings(){
  const cacheState=localStorage.getItem("ftOfflineReady")==="1";
  const lastBackup=localStorage.getItem("ftLastBackup")||"";
  sheet.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center"><h2>Impostazioni</h2><button onclick="modal.classList.add('hidden')">✕</button></div>
+ <div class="card pad"><div class="row" style="display:flex;justify-content:space-between;align-items:center"><div><b>⚙️ Progressione automatica</b><div class="sub">Suggerisce il target della prossima sessione dai dati reali.</div></div><button onclick="toggleSmartProgression()">${localStorage.getItem("ftSmartProgression")==="0"?"OFF":"ON"}</button></div></div>
  <div class="card pad"><div class="row" style="display:flex;justify-content:space-between;align-items:center"><div><b>🧠 Smart Rest</b><div class="sub">Recuperi adattati a esercizio, RPE e Readiness.</div></div><button onclick="toggleSmartRest()">${localStorage.getItem("ftSmartRest")==="0"?"OFF":"ON"}</button></div></div>
  <div class="voiceBox">
   <h3>🔊 Coach vocale</h3>
@@ -2800,7 +2911,7 @@ function openSettings(){
  <div class="card pad">
   <button style="width:100%" onclick="if(confirm('Azzero tutti i dati salvati?')){clearAllFitData();modal.classList.add('hidden');renderHome()}">Azzera tutti i dati</button>
  </div>
- <div class="card pad"><p class="note">I dati vengono salvati localmente su questo dispositivo/browser.</p><p class="note"><b>Versione: V29 Today Coach</b></p></div>`;
+ <div class="card pad"><p class="note">I dati vengono salvati localmente su questo dispositivo/browser.</p><p class="note"><b>Versione: V30 Smart Progression Engine</b></p></div>`;
  modal.classList.remove("hidden")
 }
 
