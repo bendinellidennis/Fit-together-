@@ -401,6 +401,20 @@ main{max-width:720px;padding:14px 14px 108px}
 .progressionAdvice{margin-top:9px;background:#171126;border-radius:12px;padding:9px;font-size:11px;line-height:1.45}
 .progressionUp{color:#a8ffbd}.progressionHold{color:#ffd88a}.progressionDown{color:#ffb0ad}
 
+
+/* V31 DELOAD & RECOVERY WEEK */
+.deloadBox{background:linear-gradient(145deg,#101827,#1d1730);border:1px solid #6a56b3;border-radius:18px;padding:13px;margin:12px 0}
+.deloadTop{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.deloadState{display:inline-block;border-radius:999px;padding:5px 8px;font-size:10px;font-weight:900}
+.deloadState.ok{background:#173523;color:#a8ffbd}
+.deloadState.watch{background:#3b3117;color:#ffe4a3}
+.deloadState.recover{background:#472126;color:#ffc0c0}
+.deloadGrid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin-top:9px}
+.deloadStat{background:#0d1723;border:1px solid #2a3a50;border-radius:12px;padding:9px;text-align:center}
+.deloadStat b{display:block;font-size:16px}
+.deloadStat span{font-size:9px;color:#9eabba}
+.deloadAdvice{background:#171126;border-radius:12px;padding:9px;margin-top:9px;font-size:11px;line-height:1.45}
+
 </style><link rel="manifest" href="manifest.webmanifest">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -486,6 +500,11 @@ main{max-width:720px;padding:14px 14px 108px}
 <div class="todayCoach">
   <div id="todayCoachHome"></div>
 </div>
+
+<div class="deloadBox">
+  <div id="deloadHome"></div>
+</div>
+
 
 
 <div class="voiceBox" id="voiceHomeCard">
@@ -902,6 +921,7 @@ function fitStorageKeys(){
       k==="ftVoiceCoach" ||
       k==="ftSmartRest" ||
       k==="ftSmartProgression" ||
+      k==="ftDeloadMode" ||
       k.startsWith("ftDraft_") ||
       k.startsWith("ftBody_") ||
       k.startsWith("ftNutrition_") ||
@@ -1564,7 +1584,15 @@ function todayCoachChoice(){
    duration=Math.max(15,Math.round(baseDur*.65));
  }
 
+
+ const deload=getDeloadMode();
+ if(deload){
+   intensity="DELOAD";
+   duration=Math.max(15,Math.round(duration*(1-deload.reduction/100)));
+ }
+
  let reason=[];
+ if(deload)reason.push(`scarico attivo ${deload.reduction}%`);
  if(Number(rd.score||0)>=80)reason.push("Readiness alta");
  else if(Number(rd.score||0)>=60)reason.push("Readiness buona");
  else reason.push("Readiness da gestire");
@@ -1614,6 +1642,113 @@ function startTodayCoach(){
  }
 }
 
+
+function deloadWindowStats(days=7){
+ const since=Date.now()-days*86400000;
+ const sessions=(db.sessions||[]).filter(s=>{
+   if(s.profile && s.profile!==profile)return false;
+   return Number(s.startedAt||s.createdAt||s.date||0)>=since;
+ });
+ let sets=0,reps=0,rpes=[];
+ sessions.forEach(s=>(s.sets||[]).forEach(x=>{
+   sets++;reps+=Number(x.reps)||0;
+   if(Number(x.rpe))rpes.push(Number(x.rpe));
+ }));
+ return {
+   sessions:sessions.length,
+   sets,reps,
+   avgRpe:rpes.length?rpes.reduce((a,b)=>a+b,0)/rpes.length:0
+ };
+}
+function deloadAssessment(){
+ const d7=deloadWindowStats(7),d14=deloadWindowStats(14);
+ const prev7={
+   sessions:Math.max(0,d14.sessions-d7.sessions),
+   sets:Math.max(0,d14.sets-d7.sets),
+   reps:Math.max(0,d14.reps-d7.reps)
+ };
+ const rd=readinessData?readinessData():{score:70,intensity:"NORMALE"};
+
+ let loadScore=0;
+ if(d7.avgRpe>=4.5)loadScore+=35;
+ else if(d7.avgRpe>=4.0)loadScore+=25;
+ else if(d7.avgRpe>=3.5)loadScore+=12;
+
+ if(d7.sessions>=5)loadScore+=25;
+ else if(d7.sessions>=4)loadScore+=15;
+
+ if(prev7.sets>0 && d7.sets>prev7.sets*1.25)loadScore+=20;
+ if(prev7.reps>0 && d7.reps>prev7.reps*1.25)loadScore+=10;
+
+ if(Number(rd.score||100)<55)loadScore+=25;
+ else if(Number(rd.score||100)<70)loadScore+=12;
+
+ if(profile==="girl")loadScore+=5; // slightly more conservative threshold
+
+ let state="OK",cls="ok",reduction=0;
+ if(loadScore>=60){state="RECOVERY";cls="recover";reduction=30;}
+ else if(loadScore>=35){state="ATTENZIONE";cls="watch";reduction=15;}
+
+ let advice="Carico ben gestito: continua il programma normale.";
+ if(state==="ATTENZIONE")advice="Fatica in aumento: per 1–2 sessioni riduci leggermente serie o ripetizioni e mantieni tecnica pulita.";
+ if(state==="RECOVERY")advice="Segnali di accumulo elevato: meglio una mini settimana di scarico con volume ridotto e intensità controllata.";
+
+ return {d7,prev7,rd,loadScore:Math.min(100,loadScore),state,cls,reduction,advice};
+}
+function renderDeloadHome(){
+ const box=document.getElementById("deloadHome");if(!box)return;
+ const a=deloadAssessment();
+ box.innerHTML=`<div class="deloadTop">
+   <div><b>🛡️ Recovery & Deload</b><div class="sub">Controllo automatico della fatica.</div></div>
+   <span class="deloadState ${a.cls}">${a.state}</span>
+ </div>
+ <div class="deloadGrid">
+   <div class="deloadStat"><b>${a.d7.sessions}</b><span>SESSIONI 7G</span></div>
+   <div class="deloadStat"><b>${a.d7.avgRpe?a.d7.avgRpe.toFixed(1):"-"}</b><span>RPE 7G</span></div>
+   <div class="deloadStat"><b>${a.loadScore}</b><span>FATICA /100</span></div>
+ </div>
+ <div class="deloadAdvice">${a.advice}</div>
+ ${a.reduction?`<button style="width:100%;margin-top:9px" onclick="activateDeload()">APPLICA SCARICO ${a.reduction}%</button>`:""}`;
+}
+function activateDeload(){
+ const a=deloadAssessment();
+ if(!a.reduction){alert("Non serve uno scarico in questo momento.");return}
+ localStorage.setItem("ftDeloadMode",JSON.stringify({
+   profile,
+   reduction:a.reduction,
+   until:Date.now()+7*86400000,
+   createdAt:Date.now()
+ }));
+ renderHome();
+ alert(`Scarico ${a.reduction}% attivo per 7 giorni.`);
+}
+function clearDeload(){
+ localStorage.removeItem("ftDeloadMode");
+ renderHome();
+}
+function getDeloadMode(){
+ try{
+   const d=JSON.parse(localStorage.getItem("ftDeloadMode")||"null");
+   if(!d)return null;
+   if(d.profile!==profile || Number(d.until||0)<Date.now()){
+     localStorage.removeItem("ftDeloadMode");return null;
+   }
+   return d;
+ }catch(e){return null}
+}
+function applyDeloadToWorkout(w){
+ const d=getDeloadMode();if(!d||!w)return w;
+ const clone=JSON.parse(JSON.stringify(w));
+ clone.ex=(clone.ex||[]).map(e=>{
+   const x=e.slice();
+   const sets=Number(x[1])||1,reps=Number(x[2])||0;
+   x[1]=Math.max(1,Math.round(sets*(1-d.reduction/100)));
+   if(reps>0)x[2]=Math.max(1,Math.round(reps*(1-d.reduction/100)));
+   return x;
+ });
+ return clone;
+}
+
 function renderHome(){
  updateOfflineStatus();
  setTimeout(renderPlannerHome,0);
@@ -1625,6 +1760,7 @@ function renderHome(){
  setTimeout(checkDueSchedule,0);
  setTimeout(renderWeeklyReportHome,0);
  setTimeout(renderTodayCoach,0);
+ setTimeout(renderDeloadHome,0);
  const D=id=>document.getElementById(id);
  D("dadBtn").classList.toggle("active",profile==="dad");
  D("girlBtn").classList.toggle("active",profile==="girl");
@@ -2870,6 +3006,7 @@ function openSettings(){
  const cacheState=localStorage.getItem("ftOfflineReady")==="1";
  const lastBackup=localStorage.getItem("ftLastBackup")||"";
  sheet.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center"><h2>Impostazioni</h2><button onclick="modal.classList.add('hidden')">✕</button></div>
+ <div class="card pad"><div class="row" style="display:flex;justify-content:space-between;align-items:center"><div><b>🛡️ Recovery Week</b><div class="sub">Scarico automatico attivo solo quando serve.</div></div><button onclick="clearDeload()">${getDeloadMode()?"DISATTIVA":"OFF"}</button></div></div>
  <div class="card pad"><div class="row" style="display:flex;justify-content:space-between;align-items:center"><div><b>⚙️ Progressione automatica</b><div class="sub">Suggerisce il target della prossima sessione dai dati reali.</div></div><button onclick="toggleSmartProgression()">${localStorage.getItem("ftSmartProgression")==="0"?"OFF":"ON"}</button></div></div>
  <div class="card pad"><div class="row" style="display:flex;justify-content:space-between;align-items:center"><div><b>🧠 Smart Rest</b><div class="sub">Recuperi adattati a esercizio, RPE e Readiness.</div></div><button onclick="toggleSmartRest()">${localStorage.getItem("ftSmartRest")==="0"?"OFF":"ON"}</button></div></div>
  <div class="voiceBox">
@@ -2911,7 +3048,7 @@ function openSettings(){
  <div class="card pad">
   <button style="width:100%" onclick="if(confirm('Azzero tutti i dati salvati?')){clearAllFitData();modal.classList.add('hidden');renderHome()}">Azzera tutti i dati</button>
  </div>
- <div class="card pad"><p class="note">I dati vengono salvati localmente su questo dispositivo/browser.</p><p class="note"><b>Versione: V30 Smart Progression Engine</b></p></div>`;
+ <div class="card pad"><p class="note">I dati vengono salvati localmente su questo dispositivo/browser.</p><p class="note"><b>Versione: V31 Deload Recovery Week</b></p></div>`;
  modal.classList.remove("hidden")
 }
 
