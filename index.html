@@ -1484,11 +1484,24 @@ function startOfWeek(ts){
  const d=new Date(ts||Date.now()),day=(d.getDay()+6)%7;
  d.setHours(0,0,0,0);d.setDate(d.getDate()-day);return d.getTime();
 }
+
+function ftSessionTime(s){
+ const raw=s?.startedAt ?? s?.createdAt ?? s?.date ?? s?.timestamp ?? 0;
+ if(typeof raw==="number" && Number.isFinite(raw))return raw;
+ if(typeof raw==="string"){
+   const numeric=Number(raw);
+   if(Number.isFinite(numeric) && numeric>0)return numeric;
+   const parsed=Date.parse(raw);
+   if(Number.isFinite(parsed))return parsed;
+ }
+ return 0;
+}
+
 function weeklyStats(offsetWeeks=0){
  const now=Date.now(),start=startOfWeek(now)+offsetWeeks*7*86400000,end=start+7*86400000;
  const sessions=(db.sessions||[]).filter(s=>{
    if(s.profile && s.profile!==profile)return false;
-   const t=Number(s.startedAt||s.createdAt||s.date||0);
+   const t=ftSessionTime(s);
    return t>=start&&t<end;
  });
  let totalSets=0,totalReps=0,rpes=[],prs=0;
@@ -1578,7 +1591,7 @@ ${advice}`;
 
 function recentWorkoutDays(limit=4){
  const sessions=(db.sessions||[]).filter(s=>!s.profile||s.profile===profile).slice().sort((a,b)=>
-   Number(b.startedAt||b.createdAt||b.date||0)-Number(a.startedAt||a.createdAt||a.date||0)
+   ftSessionTime(b)-ftSessionTime(a)
  );
  return sessions.slice(0,limit).map(s=>String(s.day||s.workout||s.name||""));
 }
@@ -1699,7 +1712,7 @@ function deloadWindowStats(days=7){
  const since=Date.now()-days*86400000;
  const sessions=(db.sessions||[]).filter(s=>{
    if(s.profile && s.profile!==profile)return false;
-   return Number(s.startedAt||s.createdAt||s.date||0)>=since;
+   return ftSessionTime(s)>=since;
  });
  let sets=0,reps=0,rpes=[];
  sessions.forEach(s=>(s.sets||[]).forEach(x=>{
@@ -1816,7 +1829,7 @@ function balanceStats(days=21){
  const counts={GAMBE:0,SPINTA:0,TIRATA:0,CORE:0,FULL:0,ALTRO:0};
  const sessions=(db.sessions||[]).filter(s=>{
    if(s.profile && s.profile!==profile)return false;
-   return Number(s.startedAt||s.createdAt||s.date||0)>=since;
+   return ftSessionTime(s)>=since;
  });
  sessions.forEach(s=>(s.sets||[]).forEach(x=>{
    const tag=balanceTagForExercise(x.exercise);
@@ -2038,13 +2051,13 @@ function reliabilityAudit(){
  const checks=[];
  const add=(name,ok,note)=>checks.push({name,ok:!!ok,note});
  add("Database",!!db && Array.isArray(db.sessions),"Sessioni locali accessibili");
- add("Profilo",profile==="me"||profile==="girl","Profilo attivo valido");
+ add("Profilo",profile==="dad"||profile==="girl","Profilo attivo valido");
  add("Programmi",!!plans && !!plans[profile] && Object.keys(plans[profile]).length>0,"Workout disponibili");
  add("Progressi",typeof renderProgress==="function","Dashboard disponibile");
  add("Recovery",typeof readinessData==="function" && typeof deloadAssessment==="function","Readiness e Deload disponibili");
  add("Today Coach",typeof todayCoachChoice==="function","Coach giornaliero disponibile");
  add("Generator",typeof buildGeneratedWorkout==="function","Smart Workout Generator disponibile");
- add("Voice Coach",typeof speakCoach==="function","Coach vocale disponibile");
+ add("Voice Coach",typeof testVoiceCoach==="function" && typeof ftCoachPlay==="function","Coach vocale + fallback disponibili");
  add("Backup",typeof exportBackup==="function" || typeof backupData==="function" || typeof openBackup==="function","Funzione backup rilevata");
  const storageOk=safeStorageSet("__ft_test__","1") && safeStorageGet("__ft_test__")==="1";
  add("Storage",storageOk,"Salvataggio locale funzionante");
@@ -2142,6 +2155,11 @@ function ftPrevTrack(){ftChooseTrack((ftEpicIndex-1+ftEpicTracks.length)%ftEpicT
 function ftRandomTrack(){let n=ftEpicIndex;while(n===ftEpicIndex)n=Math.floor(Math.random()*ftEpicTracks.length);ftChooseTrack(n);const a=ftMusicAudio();if(a)a.play().catch(()=>{});}
 
 function renderHome(){
+ try{
+   const ma=document.getElementById("ftMusicNative");
+   if(ma && ma.volume<.99)ma.volume=1;
+ }catch(e){}
+
  sanitizeDatabase();
  recoverInvalidLiveDraft();
  setTimeout(renderReliabilityHome,0);
@@ -3494,7 +3512,7 @@ function toggleVoiceCoach(){
  const next=!voiceCoachEnabled();
  localStorage.setItem("ftVoiceCoach",next?"1":"0");
  try{window.speechSynthesis?.cancel()}catch(e){}
- try{ftCoachAudio.pause()}catch(e){}
+ try{ftCoachAudio.pause()}catch(e){};try{const m=document.getElementById("ftMusicNative");if(m)m.volume=1}catch(e){}
  updateVoiceButtons();
  renderVoiceHome();
  if(next)ftCoachPlay("test");
@@ -3593,7 +3611,7 @@ function openSettings(){
  <div class="card pad">
   <button style="width:100%" onclick="if(confirm('Azzero tutti i dati salvati?')){clearAllFitData();modal.classList.add('hidden');renderHome()}">Azzera tutti i dati</button>
  </div>
- <div class="card pad"><p class="note">I dati vengono salvati localmente su questo dispositivo/browser.</p><p class="note"><b>Versione: V36.8 Clean Audio Rebuild</b></p></div>`;
+ <div class="card pad"><p class="note">I dati vengono salvati localmente su questo dispositivo/browser.</p><p class="note"><b>Versione: V37 Final Functional Audit</b></p></div>`;
  modal.classList.remove("hidden")
 }
 
