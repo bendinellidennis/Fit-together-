@@ -2140,30 +2140,34 @@ let ftMusicDucked=false;
 const ftWorkoutAudio=new Audio(ftMusicTracks[ftMusicIndex]);ftWorkoutAudio.setAttribute("playsinline","");ftWorkoutAudio.setAttribute("webkit-playsinline","");ftWorkoutAudio.loop=false;ftWorkoutAudio.preload="auto";ftWorkoutAudio.volume=ftMusicVolume;
 
 let ftAudioUnlocked=false;
-async function unlockWorkoutAudio(){
+function playWorkoutMusic(){
  try{
+   /* IMPORTANT iPhone/Safari:
+      play() must happen directly inside the user's tap.
+      Do not await load()/unlock before calling play(), or Safari can lose
+      the user gesture and reject playback with NotAllowedError. */
    ftWorkoutAudio.muted=false;
    ftWorkoutAudio.volume=ftMusicVolume;
-   ftWorkoutAudio.load();
+   const p=ftWorkoutAudio.play();
    ftAudioUnlocked=true;
-   return true;
- }catch(e){return false;}
-}
-async function playWorkoutMusic(){
- try{
-   await unlockWorkoutAudio();
-   ftWorkoutAudio.muted=false;
-   ftWorkoutAudio.volume=ftMusicVolume;
-   await ftWorkoutAudio.play();
-   renderWorkoutMusic();
+   if(p && typeof p.then==="function"){
+     p.then(()=>{renderWorkoutMusic();})
+      .catch((e)=>{handleWorkoutAudioError(e);});
+   }else{
+     renderWorkoutMusic();
+   }
    return true;
  }catch(e){
-   console.error("FIT TOGETHER audio play error",e);
-   const b=document.getElementById("musicSessionToggle")||document.getElementById("musicTopToggle");
-   if(b)b.textContent="⚠️ RIPROVA";
-   alert("Safari non è riuscito ad avviare l'audio. Tocca di nuovo PLAY con il volume dell'iPhone alzato.");
+   handleWorkoutAudioError(e);
    return false;
  }
+}
+function handleWorkoutAudioError(e){
+ console.error("FIT TOGETHER audio play error",e);
+ const b=document.getElementById("musicSessionToggle")||document.getElementById("musicTopToggle");
+ const n=document.getElementById("musicSessionNow")||document.getElementById("musicNow");
+ if(b)b.textContent="▶ PLAY";
+ if(n)n.textContent="⚠️ Brano non disponibile · usa ⏭";
 }
 
 function renderWorkoutMusic(){
@@ -2177,21 +2181,21 @@ function renderWorkoutMusic(){
  if(sb)sb.textContent=ftWorkoutAudio.paused?"▶ PLAY":"⏸ PAUSA";
 
 }
-async function toggleWorkoutMusic(){
- if(ftWorkoutAudio.paused){await playWorkoutMusic();}
+function toggleWorkoutMusic(){
+ if(ftWorkoutAudio.paused){playWorkoutMusic();}
  else{ftWorkoutAudio.pause();renderWorkoutMusic();}
 }
-function selectMusicTrack(v){let play=!ftWorkoutAudio.paused;ftMusicIndex=Math.max(0,Math.min(ftMusicTracks.length-1,Number(v)||0));localStorage.setItem("ftMusicTrack",ftMusicIndex);ftWorkoutAudio.src=ftMusicTracks[ftMusicIndex];ftWorkoutAudio.loop=false;ftWorkoutAudio.volume=ftMusicVolume;if(play)playWorkoutMusic();else renderWorkoutMusic();}
-function musicNext(){selectMusicTrack((ftMusicIndex+1)%ftMusicTracks.length)} function musicPrev(){selectMusicTrack((ftMusicIndex-1+ftMusicTracks.length)%ftMusicTracks.length)}
-function setWorkoutMusicVolume(v){ftMusicVolume=Math.max(0,Math.min(1,(Number(v)||0)/100));ftWorkoutAudio.volume=ftMusicVolume;localStorage.setItem("ftMusicVolume",ftMusicVolume);renderWorkoutMusic();}
-function duckWorkoutMusic(){if(!ftWorkoutAudio.paused){ftMusicDucked=true;ftWorkoutAudio.volume=Math.min(.14,ftMusicVolume);}}
-function restoreWorkoutMusic(){if(ftMusicDucked){ftWorkoutAudio.volume=ftMusicVolume;ftMusicDucked=false;}}
-
-let ftMusicAuto=localStorage.getItem("ftMusicAuto")!=="0";
-function musicRandom(){
- let n=ftMusicIndex;
- if(ftMusicTracks.length>1)while(n===ftMusicIndex)n=Math.floor(Math.random()*ftMusicTracks.length);
- selectMusicTrack(n);
+function selectMusicTrack(v){
+ const wasPlaying=!ftWorkoutAudio.paused;
+ ftMusicIndex=Math.max(0,Math.min(ftMusicTracks.length-1,Number(v)||0));
+ localStorage.setItem("ftMusicTrack",String(ftMusicIndex));
+ ftWorkoutAudio.pause();
+ ftWorkoutAudio.src=ftMusicTracks[ftMusicIndex];
+ ftWorkoutAudio.currentTime=0;
+ ftWorkoutAudio.muted=false;
+ ftWorkoutAudio.volume=ftMusicVolume;
+ if(wasPlaying){playWorkoutMusic();}
+ else{renderWorkoutMusic();}
 }
 function toggleMusicAuto(){
  ftMusicAuto=!ftMusicAuto;localStorage.setItem("ftMusicAuto",ftMusicAuto?"1":"0");renderWorkoutMusic();
@@ -2199,7 +2203,9 @@ function toggleMusicAuto(){
 ftWorkoutAudio.addEventListener("play",renderWorkoutMusic);ftWorkoutAudio.addEventListener("pause",renderWorkoutMusic);
 ftWorkoutAudio.addEventListener("error",()=>{
  const n=document.getElementById("musicSessionNow")||document.getElementById("musicNow");
- if(n)n.textContent="⚠️ Brano non disponibile — premi ⏭";
+ const b=document.getElementById("musicSessionToggle")||document.getElementById("musicTopToggle");
+ if(n)n.textContent="⚠️ Brano non disponibile · premi ⏭";
+ if(b)b.textContent="▶ PLAY";
 });
 
 ftWorkoutAudio.addEventListener("ended",()=>{if(ftMusicAuto){musicRandom();playWorkoutMusic();}else{ftWorkoutAudio.currentTime=0;}});
@@ -2642,7 +2648,7 @@ function applySuggestedTarget(){
 
 
 function sessionMusicPlayerHtml(){
- const opts=ftMusicTracks.map((_,i)=>`<option value="${i}" ${i===ftMusicIndex?"selected":""}>${ftMusicTitles[i]} · ${ftMusicBpms[i]} BPM</option>`).join("");
+ const opts=ftMusicTracks.map((_,i)=>`<option value="${i}" ${i===ftMusicIndex?"selected":""}>${ftMusicTitles[i]} · ${ftMusicBpms[i]}</option>`).join("");
  return `<div class="sessionMusic">
    <div class="sessionMusicHead">
      <div><div class="sessionMusicTitle">🏛️ EPIC CINEMATIC · 30 BRANI</div><div id="musicSessionNow" class="sessionMusicNow">${ftMusicTitles[ftMusicIndex]} · ${ftMusicBpms[ftMusicIndex]}</div></div>
@@ -3659,7 +3665,7 @@ function openSettings(){
  <div class="card pad">
   <button style="width:100%" onclick="if(confirm('Azzero tutti i dati salvati?')){clearAllFitData();modal.classList.add('hidden');renderHome()}">Azzera tutti i dati</button>
  </div>
- <div class="card pad"><p class="note">I dati vengono salvati localmente su questo dispositivo/browser.</p><p class="note"><b>Versione: V36.7 Epic Cinematic 30 Complete</b></p></div>`;
+ <div class="card pad"><p class="note">I dati vengono salvati localmente su questo dispositivo/browser.</p><p class="note"><b>Versione: V36.7.1 Safari Direct Play Fix</b></p></div>`;
  modal.classList.remove("hidden")
 }
 
