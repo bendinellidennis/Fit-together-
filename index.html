@@ -457,6 +457,14 @@ main{max-width:720px;padding:14px 14px 108px}
 .generatorMeta{font-size:10px;color:#9eabba;margin-top:4px}
 .generatorWhy{background:#171126;border-radius:12px;padding:9px;margin-top:9px;font-size:11px;line-height:1.45}
 
+
+/* V35 FINAL UX & RELIABILITY AUDIT */
+.reliabilityCard{background:linear-gradient(145deg,#101827,#181b2d);border:1px solid #405572;border-radius:18px;padding:13px;margin:12px 0}
+.reliabilityGrid{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:9px}
+.reliabilityItem{background:#0d1723;border:1px solid #2b3b50;border-radius:12px;padding:9px}
+.reliabilityItem b{font-size:11px}.reliabilityItem span{display:block;font-size:9px;color:#9eabba;margin-top:3px}
+.reliabilityOk{color:#a8ffbd}.reliabilityWarn{color:#ffd88a}
+
 </style><link rel="manifest" href="manifest.webmanifest">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -558,6 +566,15 @@ main{max-width:720px;padding:14px 14px 108px}
   </div>
   <div id="generatorHome"></div>
 </div>
+
+<div class="reliabilityCard">
+  <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+    <div><b>✅ App Health</b><div class="sub">Controllo rapido di dati e funzioni principali.</div></div>
+    <button onclick="openReliabilityAudit()">CONTROLLA</button>
+  </div>
+  <div id="reliabilityHome"></div>
+</div>
+
 
 
 
@@ -1924,6 +1941,7 @@ function startBalanceSuggested(){
 }
 
 
+let ftStartLock=false;
 let generatorState={duration:30,place:"Casa",energy:"MEDIA",preview:null};
 
 function generatorPool(){
@@ -2028,7 +2046,10 @@ function regenerateWorkout(){
  renderGeneratorModal();
 }
 function startGeneratedWorkout(){
- const w=generatorState.preview||buildGeneratedWorkout();if(!w)return;
+ if(ftStartLock)return;
+ ftStartLock=true;
+ setTimeout(()=>ftStartLock=false,900);
+ const w=generatorState.preview||buildGeneratedWorkout();if(!w){ftStartLock=false;return;}
  modal.classList.add("hidden");
  currentDay="SMART";
  sessionWorkout=JSON.parse(JSON.stringify(w));
@@ -2041,7 +2062,91 @@ function startGeneratedWorkout(){
  }else renderExercise();
 }
 
+
+function safeStorageGet(k,fallback=null){
+ try{
+   const v=localStorage.getItem(k);
+   return v===null?fallback:v;
+ }catch(e){return fallback}
+}
+function safeStorageSet(k,v){
+ try{localStorage.setItem(k,v);return true}catch(e){return false}
+}
+function reliabilityAudit(){
+ const checks=[];
+ const add=(name,ok,note)=>checks.push({name,ok:!!ok,note});
+ add("Database",!!db && Array.isArray(db.sessions),"Sessioni locali accessibili");
+ add("Profilo",profile==="me"||profile==="girl","Profilo attivo valido");
+ add("Programmi",!!plans && !!plans[profile] && Object.keys(plans[profile]).length>0,"Workout disponibili");
+ add("Progressi",typeof renderProgress==="function","Dashboard disponibile");
+ add("Recovery",typeof readinessData==="function" && typeof deloadAssessment==="function","Readiness e Deload disponibili");
+ add("Today Coach",typeof todayCoachChoice==="function","Coach giornaliero disponibile");
+ add("Generator",typeof buildGeneratedWorkout==="function","Smart Workout Generator disponibile");
+ add("Voice Coach",typeof speakCoach==="function","Coach vocale disponibile");
+ add("Backup",typeof exportBackup==="function" || typeof backupData==="function" || typeof openBackup==="function","Funzione backup rilevata");
+ const storageOk=safeStorageSet("__ft_test__","1") && safeStorageGet("__ft_test__")==="1";
+ add("Storage",storageOk,"Salvataggio locale funzionante");
+ try{localStorage.removeItem("__ft_test__")}catch(e){}
+ const passed=checks.filter(x=>x.ok).length;
+ return {checks,passed,total:checks.length,score:Math.round(passed*100/checks.length)};
+}
+function renderReliabilityHome(){
+ const box=document.getElementById("reliabilityHome");if(!box)return;
+ const a=reliabilityAudit();
+ box.innerHTML=`<div class="reliabilityGrid">
+  <div class="reliabilityItem"><b class="${a.score===100?"reliabilityOk":"reliabilityWarn"}">${a.score}%</b><span>HEALTH SCORE</span></div>
+  <div class="reliabilityItem"><b>${a.passed}/${a.total}</b><span>CONTROLLI OK</span></div>
+ </div>`;
+}
+function openReliabilityAudit(){
+ const a=reliabilityAudit();
+ sheet.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center"><h2>✅ App Health</h2><button onclick="modal.classList.add('hidden')">✕</button></div>
+ <div class="summaryHero"><div class="sub">RELIABILITY SCORE</div><div class="summaryScore">${a.score}</div><div class="summaryLabel">/100</div></div>
+ <div class="advList">${a.checks.map(c=>`<div class="advItem"><div class="advItemTop"><span>${c.name}</span><b class="${c.ok?"advGood":"advDown"}">${c.ok?"OK":"CHECK"}</b></div><div class="sub">${c.note}</div></div>`).join("")}</div>
+ <div class="balanceAdvice"><b>Nota</b><div class="sub" style="margin-top:6px">Questo controllo verifica integrità di base, storage e disponibilità delle funzioni principali. Non modifica i tuoi dati.</div></div>
+ <button style="width:100%;margin-top:10px" onclick="modal.classList.add('hidden')">CHIUDI</button>`;
+ modal.classList.remove("hidden");
+}
+function normalizeSessionTimestamp(s){
+ if(!s)return 0;
+ const raw=s.startedAt||s.createdAt||s.date||0;
+ const n=Number(raw);
+ if(Number.isFinite(n)&&n>1000000000)return n;
+ const p=Date.parse(raw);
+ return Number.isFinite(p)?p:0;
+}
+function sanitizeDatabase(){
+ if(!db || !Array.isArray(db.sessions))return;
+ let changed=false;
+ const clean=db.sessions.filter(s=>s&&typeof s==="object");
+ if(clean.length!==db.sessions.length)changed=true;
+ db.sessions=clean;
+ db.sessions.forEach(s=>{
+   if(!Array.isArray(s.sets)){s.sets=[];changed=true}
+ });
+ if(changed){
+   try{localStorage.setItem("ftData",JSON.stringify(db))}catch(e){}
+ }
+}
+function recoverInvalidLiveDraft(){
+ try{
+   const k="ftLiveDraft_"+profile;
+   const raw=localStorage.getItem(k);
+   if(!raw)return;
+   const d=JSON.parse(raw);
+   const ex=(d&&d.workout&&Array.isArray(d.workout.ex))?d.workout.ex:(d&&Array.isArray(d.ex)?d.ex:null);
+   if(!d || typeof d!=="object" || !ex){
+     localStorage.removeItem(k);
+   }
+ }catch(e){
+   try{localStorage.removeItem("ftLiveDraft_"+profile)}catch(x){}
+ }
+}
+
 function renderHome(){
+ sanitizeDatabase();
+ recoverInvalidLiveDraft();
+ setTimeout(renderReliabilityHome,0);
  updateOfflineStatus();
  setTimeout(renderPlannerHome,0);
  setTimeout(renderReadinessHome,0);
@@ -3461,7 +3566,7 @@ function openSettings(){
  <div class="card pad">
   <button style="width:100%" onclick="if(confirm('Azzero tutti i dati salvati?')){clearAllFitData();modal.classList.add('hidden');renderHome()}">Azzera tutti i dati</button>
  </div>
- <div class="card pad"><p class="note">I dati vengono salvati localmente su questo dispositivo/browser.</p><p class="note"><b>Versione: V34 Smart Workout Generator</b></p></div>`;
+ <div class="card pad"><p class="note">I dati vengono salvati localmente su questo dispositivo/browser.</p><p class="note"><b>Versione: V35 Final UX Reliability Audit</b></p></div>`;
  modal.classList.remove("hidden")
 }
 
