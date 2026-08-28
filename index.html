@@ -341,6 +341,19 @@ main{max-width:720px;padding:14px 14px 108px}
 .restAdjust{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
 .restPill{display:inline-block;background:#342a59;border-radius:999px;padding:5px 8px;font-size:10px;font-weight:900}
 
+
+/* V26 SMART SESSION SUMMARY */
+.summaryHero{background:linear-gradient(145deg,#161126,#22173a);border:1px solid #7056bd;border-radius:22px;padding:18px;margin:10px 0;text-align:center}
+.summaryScore{font-size:44px;font-weight:1000;line-height:1}
+.summaryLabel{font-size:11px;color:#aab6c6;margin-top:4px}
+.summaryGrid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:12px}
+.summaryStat{background:#0d1723;border:1px solid #27384f;border-radius:15px;padding:12px;text-align:center}
+.summaryStat b{display:block;font-size:20px}
+.summaryStat span{font-size:10px;color:#9daabd}
+.summaryInsight{background:#101827;border:1px solid #2d4058;border-radius:16px;padding:12px;margin-top:10px;line-height:1.45}
+.summaryPR{display:inline-block;background:#4c347e;border-radius:999px;padding:6px 9px;font-size:10px;font-weight:900;margin:3px}
+.summaryActions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+
 </style><link rel="manifest" href="manifest.webmanifest">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -1847,6 +1860,14 @@ function setProgressTab(tab){
  document.getElementById(ids[tab])?.classList.add("on");
  renderProgress();
 }
+
+function openLastSessionSummary(){
+ const sessions=(db.sessions||[]).filter(s=>(s.profile||profile)===profile || !s.profile);
+ const last=sessions[sessions.length-1];
+ if(!last){alert("Nessun allenamento completato.");return}
+ openSessionSummary(last);
+}
+
 function renderProgress(){
  const lab=document.getElementById("progressProfileLabel");
  if(lab)lab.textContent=profile==="dad"?"Profilo: TU":"Profilo: FIGLIA";
@@ -2167,6 +2188,99 @@ function finishSession(){
  launchCooldown();
 }
 
+
+function sessionSummaryStats(session){
+ const sets=(session?.sets||[]);
+ const totalSets=sets.length;
+ const totalReps=sets.reduce((s,x)=>s+(Number(x.reps)||0),0);
+ const rpes=sets.map(x=>Number(x.rpe)||0).filter(Boolean);
+ const avgRpe=rpes.length?rpes.reduce((a,b)=>a+b,0)/rpes.length:0;
+ const duration=Math.max(0,Math.round((Number(session?.duration)||0)/60));
+ const uniqueExercises=[...new Set(sets.map(x=>x.exercise).filter(Boolean))].length;
+ return {totalSets,totalReps,avgRpe,duration,uniqueExercises};
+}
+function findSessionPRs(session){
+ const sets=session?.sets||[];
+ const history=(db.sessions||[]).filter(s=>s!==session);
+ const previous={};
+ history.forEach(s=>(s.sets||[]).forEach(x=>{
+   const n=x.exercise||"";
+   previous[n]=Math.max(previous[n]||0,Number(x.reps)||0);
+ }));
+ const prs=[];
+ sets.forEach(x=>{
+   const n=x.exercise||"";
+   const reps=Number(x.reps)||0;
+   if(n && reps>0 && reps>(previous[n]||0) && !prs.includes(n))prs.push(n);
+ });
+ return prs.slice(0,5);
+}
+function recoveryAdviceForSummary(stats){
+ const rd=readinessData?readinessData():null;
+ if(stats.avgRpe>=4.5)return "Sessione impegnativa: domani privilegia recupero, sonno e idratazione.";
+ if(stats.avgRpe>=3.5)return "Buon lavoro. Lascia recuperare i gruppi muscolari principali prima di ripeterli intensamente.";
+ if(rd&&rd.intensity==="RECUPERO")return "Mantieni il prossimo allenamento leggero finché la Readiness non risale.";
+ return "Recupero regolare: se domani ti senti bene puoi seguire il prossimo allenamento previsto.";
+}
+function sessionQualityScore(stats){
+ let score=70;
+ if(stats.totalSets>=8)score+=8;
+ if(stats.totalSets>=12)score+=5;
+ if(stats.duration>=20)score+=5;
+ if(stats.avgRpe>=2.5&&stats.avgRpe<=4.2)score+=7;
+ if(stats.avgRpe>4.7)score-=5;
+ return Math.max(50,Math.min(100,Math.round(score)));
+}
+function buildShareSummary(session){
+ const st=sessionSummaryStats(session),prs=findSessionPRs(session);
+ return `FIT TOGETHER 💪
+Allenamento completato
+Durata: ${st.duration} min
+Serie: ${st.totalSets}
+Ripetizioni: ${st.totalReps}
+RPE medio: ${st.avgRpe?st.avgRpe.toFixed(1):"-"}
+${prs.length?"Record: "+prs.join(", "):"Sessione completata con successo"}`;
+}
+async function shareSessionSummary(session){
+ const text=buildShareSummary(session);
+ try{
+   if(navigator.share){
+     await navigator.share({title:"FIT TOGETHER 💪",text});
+   }else{
+     await navigator.clipboard.writeText(text);
+     alert("Riepilogo copiato.");
+   }
+ }catch(e){}
+}
+function openSessionSummary(session){
+ if(!session)return;
+ const st=sessionSummaryStats(session),prs=findSessionPRs(session),score=sessionQualityScore(st);
+ const advice=recoveryAdviceForSummary(st);
+ const profileLabel=profile==="girl"?"FIGLIA":"TU";
+ sheet.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center"><h2>🏁 Allenamento completato</h2><button onclick="modal.classList.add('hidden');show('home')">✕</button></div>
+ <div class="summaryHero">
+   <div class="sub">${profileLabel} · SESSIONE COMPLETATA</div>
+   <div class="summaryScore">${score}</div>
+   <div class="summaryLabel">SESSION SCORE / 100</div>
+   <div class="summaryGrid">
+     <div class="summaryStat"><b>${st.duration}</b><span>MINUTI</span></div>
+     <div class="summaryStat"><b>${st.totalSets}</b><span>SERIE</span></div>
+     <div class="summaryStat"><b>${st.totalReps}</b><span>RIPETIZIONI</span></div>
+     <div class="summaryStat"><b>${st.avgRpe?st.avgRpe.toFixed(1):"-"}</b><span>RPE MEDIO</span></div>
+   </div>
+ </div>
+ ${prs.length?`<div class="card pad"><h3>🏆 Nuovi record</h3>${prs.map(x=>`<span class="summaryPR">${x}</span>`).join("")}</div>`:""}
+ <div class="summaryInsight"><b>🧠 Recupero consigliato</b><div class="sub" style="margin-top:5px">${advice}</div></div>
+ <div class="summaryActions">
+   <button onclick="shareSessionSummary(window._lastSummarySession)">CONDIVIDI ↗</button>
+   <button onclick="modal.classList.add('hidden');show('progress')">VEDI PROGRESSI</button>
+ </div>
+ <button class="primary" style="width:100%;margin-top:10px" onclick="modal.classList.add('hidden');show('home')">TORNA ALLA HOME</button>`;
+ window._lastSummarySession=session;
+ modal.classList.remove("hidden");
+ speakCoach?.("Allenamento completato. Riepilogo pronto.");
+}
+
 function finalizeWorkoutSession(){
  clearInterval(sessionTicker);
  clearInterval(timerInt);
@@ -2387,7 +2501,7 @@ function openSettings(){
  <div class="card pad">
   <button style="width:100%" onclick="if(confirm('Azzero tutti i dati salvati?')){clearAllFitData();modal.classList.add('hidden');renderHome()}">Azzera tutti i dati</button>
  </div>
- <div class="card pad"><p class="note">I dati vengono salvati localmente su questo dispositivo/browser.</p><p class="note"><b>Versione: V25 Smart Rest Coach</b></p></div>`;
+ <div class="card pad"><p class="note">I dati vengono salvati localmente su questo dispositivo/browser.</p><p class="note"><b>Versione: V26 Smart Session Summary</b></p></div>`;
  modal.classList.remove("hidden")
 }
 
