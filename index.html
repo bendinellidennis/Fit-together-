@@ -365,6 +365,18 @@ main{max-width:720px;padding:14px 14px 108px}
 .lastTarget{margin-top:9px;background:#171126;border-radius:12px;padding:9px;font-size:11px;line-height:1.45}
 .trendUp{color:#a8ffbd}.trendFlat{color:#ffd88a}
 
+
+/* V28 SMART WEEKLY REPORT */
+.weekReport{background:linear-gradient(145deg,#101827,#19142c);border:1px solid #5d47a7;border-radius:18px;padding:14px;margin:12px 0}
+.weekReportGrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.weekMetric{background:#0d1723;border:1px solid #28384e;border-radius:14px;padding:11px}
+.weekMetric b{display:block;font-size:20px}
+.weekMetric span{font-size:10px;color:#9eabba}
+.weekDelta{font-size:10px;margin-top:4px}
+.weekDelta.up{color:#a8ffbd}.weekDelta.down{color:#ffaaa8}.weekDelta.flat{color:#ffd88a}
+.weekAdvice{background:#171126;border-radius:14px;padding:11px;margin-top:10px;line-height:1.45}
+.weekScore{font-size:34px;font-weight:1000}
+
 </style><link rel="manifest" href="manifest.webmanifest">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -428,6 +440,15 @@ main{max-width:720px;padding:14px 14px 108px}
   </div>
   <div id="scheduleHome"></div>
 </div>
+
+<div class="weekReport">
+  <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+    <div><b>📊 Report settimanale</b><div class="sub">Confronto automatico con la settimana precedente.</div></div>
+    <button onclick="openWeeklyReport()">APRI</button>
+  </div>
+  <div id="weeklyReportHome"></div>
+</div>
+
 
 
 <div class="readyBox">
@@ -1364,6 +1385,102 @@ function checkDueSchedule(){
  }
 }
 
+
+function startOfWeek(ts){
+ const d=new Date(ts||Date.now()),day=(d.getDay()+6)%7;
+ d.setHours(0,0,0,0);d.setDate(d.getDate()-day);return d.getTime();
+}
+function weeklyStats(offsetWeeks=0){
+ const now=Date.now(),start=startOfWeek(now)+offsetWeeks*7*86400000,end=start+7*86400000;
+ const sessions=(db.sessions||[]).filter(s=>{
+   if(s.profile && s.profile!==profile)return false;
+   const t=Number(s.startedAt||s.createdAt||s.date||0);
+   return t>=start&&t<end;
+ });
+ let totalSets=0,totalReps=0,rpes=[],prs=0;
+ sessions.forEach(s=>{
+   (s.sets||[]).forEach(x=>{
+     totalSets++;
+     totalReps+=Number(x.reps)||0;
+     if(Number(x.rpe))rpes.push(Number(x.rpe));
+   });
+   try{prs+=findSessionPRs(s).length}catch(e){}
+ });
+ const avgRpe=rpes.length?rpes.reduce((a,b)=>a+b,0)/rpes.length:0;
+ return {sessions:sessions.length,totalSets,totalReps,avgRpe,prs,start,end};
+}
+function deltaInfo(cur,prev,label=""){
+ const d=cur-prev;
+ if(d>0)return {cls:"up",txt:`▲ +${d}${label}`};
+ if(d<0)return {cls:"down",txt:`▼ ${d}${label}`};
+ return {cls:"flat",txt:`• invariato`};
+}
+function weeklyConsistencyScore(cur){
+ const target=(plannerData?plannerData():null)?.target||3;
+ const ratio=Math.min(1.2,cur.sessions/Math.max(1,target));
+ let score=Math.round(55+ratio*35);
+ if(cur.avgRpe>=2.5&&cur.avgRpe<=4.2)score+=5;
+ if(cur.prs>0)score+=5;
+ return Math.max(40,Math.min(100,score));
+}
+function weeklyAdvice(cur,prev){
+ if(cur.sessions===0)return "Settimana senza allenamenti registrati: riparti con 2–3 sessioni semplici e regolari.";
+ if(cur.avgRpe>4.5)return "Carico percepito alto: la prossima settimana mantieni il volume e cura maggiormente recupero e tecnica.";
+ if(cur.sessions>prev.sessions && cur.avgRpe<=4.2)return "Ottima crescita di costanza: puoi mantenere il ritmo e aumentare solo leggermente il volume o le ripetizioni.";
+ if(cur.prs>=2)return "Stai producendo progressi reali: evita di aumentare tutto insieme. Conserva almeno una variabile stabile.";
+ if(cur.sessions<prev.sessions)return "La costanza è scesa rispetto alla settimana precedente: meglio recuperare regolarità prima di aumentare l'intensità.";
+ return "Settimana stabile: continua con lo stesso ritmo e lascia che Last Time Coach guidi le piccole progressioni.";
+}
+function renderWeeklyReportHome(){
+ const box=document.getElementById("weeklyReportHome");if(!box)return;
+ const cur=weeklyStats(0),prev=weeklyStats(-1),score=weeklyConsistencyScore(cur);
+ const d=deltaInfo(cur.sessions,prev.sessions);
+ box.innerHTML=`<div class="weekReportGrid">
+   <div class="weekMetric"><b>${cur.sessions}</b><span>ALLENAMENTI</span><div class="weekDelta ${d.cls}">${d.txt}</div></div>
+   <div class="weekMetric"><b>${score}</b><span>WEEK SCORE /100</span></div>
+ </div>`;
+}
+function openWeeklyReport(){
+ const cur=weeklyStats(0),prev=weeklyStats(-1),score=weeklyConsistencyScore(cur);
+ const ds=deltaInfo(cur.sessions,prev.sessions),dset=deltaInfo(cur.totalSets,prev.totalSets),dr=deltaInfo(cur.totalReps,prev.totalReps);
+ const rpeDelta=(cur.avgRpe&&prev.avgRpe)?(cur.avgRpe-prev.avgRpe):0;
+ const rpeCls=rpeDelta>0.3?"down":rpeDelta<-0.3?"up":"flat";
+ const rpeTxt=!cur.avgRpe?"-":`${cur.avgRpe.toFixed(1)} ${prev.avgRpe?`(${rpeDelta>0?"+":""}${rpeDelta.toFixed(1)})`:""}`;
+ const advice=weeklyAdvice(cur,prev);
+ sheet.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center"><h2>📊 Report settimanale</h2><button onclick="modal.classList.add('hidden')">✕</button></div>
+ <div class="summaryHero"><div class="sub">SETTIMANA CORRENTE</div><div class="weekScore">${score}</div><div class="summaryLabel">WEEK SCORE / 100</div></div>
+ <div class="weekReportGrid">
+   <div class="weekMetric"><b>${cur.sessions}</b><span>ALLENAMENTI</span><div class="weekDelta ${ds.cls}">${ds.txt}</div></div>
+   <div class="weekMetric"><b>${cur.totalSets}</b><span>SERIE</span><div class="weekDelta ${dset.cls}">${dset.txt}</div></div>
+   <div class="weekMetric"><b>${cur.totalReps}</b><span>RIPETIZIONI</span><div class="weekDelta ${dr.cls}">${dr.txt}</div></div>
+   <div class="weekMetric"><b>${rpeTxt}</b><span>RPE MEDIO</span><div class="weekDelta ${rpeCls}">${prev.avgRpe?"vs settimana scorsa":"nessun confronto"}</div></div>
+   <div class="weekMetric"><b>${cur.prs}</b><span>NUOVI RECORD</span></div>
+   <div class="weekMetric"><b>${prev.sessions}</b><span>SETTIMANA SCORSA</span></div>
+ </div>
+ <div class="weekAdvice"><b>🧠 Indicazione per la prossima settimana</b><div class="sub" style="margin-top:6px">${advice}</div></div>
+ <div class="summaryActions">
+   <button onclick="shareWeeklyReport()">CONDIVIDI ↗</button>
+   <button onclick="modal.classList.add('hidden');show('progress')">VEDI PROGRESSI</button>
+ </div>`;
+ modal.classList.remove("hidden");
+}
+async function shareWeeklyReport(){
+ const cur=weeklyStats(0),prev=weeklyStats(-1),score=weeklyConsistencyScore(cur),advice=weeklyAdvice(cur,prev);
+ const text=`FIT TOGETHER 💪
+Report settimanale
+Week Score: ${score}/100
+Allenamenti: ${cur.sessions}
+Serie: ${cur.totalSets}
+Ripetizioni: ${cur.totalReps}
+RPE medio: ${cur.avgRpe?cur.avgRpe.toFixed(1):"-"}
+Nuovi record: ${cur.prs}
+${advice}`;
+ try{
+   if(navigator.share)await navigator.share({title:"FIT TOGETHER – Report settimanale",text});
+   else{await navigator.clipboard.writeText(text);alert("Report copiato.");}
+ }catch(e){}
+}
+
 function renderHome(){
  updateOfflineStatus();
  setTimeout(renderPlannerHome,0);
@@ -1373,6 +1490,7 @@ function renderHome(){
  setTimeout(renderVoiceHome,0);
  setTimeout(renderScheduleHome,0);
  setTimeout(checkDueSchedule,0);
+ setTimeout(renderWeeklyReportHome,0);
  const D=id=>document.getElementById(id);
  D("dadBtn").classList.toggle("active",profile==="dad");
  D("girlBtn").classList.toggle("active",profile==="girl");
@@ -2561,7 +2679,7 @@ function openSettings(){
  <div class="card pad">
   <button style="width:100%" onclick="if(confirm('Azzero tutti i dati salvati?')){clearAllFitData();modal.classList.add('hidden');renderHome()}">Azzera tutti i dati</button>
  </div>
- <div class="card pad"><p class="note">I dati vengono salvati localmente su questo dispositivo/browser.</p><p class="note"><b>Versione: V27 Last Time Coach</b></p></div>`;
+ <div class="card pad"><p class="note">I dati vengono salvati localmente su questo dispositivo/browser.</p><p class="note"><b>Versione: V28 Smart Weekly Report</b></p></div>`;
  modal.classList.remove("hidden")
 }
 
