@@ -430,6 +430,21 @@ main{max-width:720px;padding:14px 14px 108px}
 .balanceFill{height:100%;background:linear-gradient(90deg,#6b4ec2,#a984ff)}
 .balanceAdvice{background:#171126;border-radius:12px;padding:9px;margin-top:9px;font-size:11px;line-height:1.45}
 
+
+/* V33 ADVANCED PROGRESS DASHBOARD */
+.advDash{background:linear-gradient(145deg,#101827,#1b1730);border:1px solid #6652ad;border-radius:18px;padding:13px;margin:12px 0}
+.advGrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.advMetric{background:#0d1723;border:1px solid #2a3a50;border-radius:13px;padding:10px}
+.advMetric b{display:block;font-size:20px}
+.advMetric span{font-size:9px;color:#9eabba}
+.trendMini{display:flex;gap:5px;align-items:flex-end;height:72px;margin-top:10px}
+.trendMiniBar{flex:1;background:linear-gradient(180deg,#a984ff,#6b4ec2);border-radius:7px 7px 2px 2px;min-height:4px}
+.trendLabels{display:flex;justify-content:space-between;font-size:9px;color:#8f9bac;margin-top:4px}
+.advList{display:grid;gap:7px;margin-top:10px}
+.advItem{background:#0d1723;border:1px solid #2a3a50;border-radius:12px;padding:9px}
+.advItemTop{display:flex;justify-content:space-between;gap:8px;align-items:center}
+.advGood{color:#a8ffbd}.advFlat{color:#ffd88a}.advDown{color:#ffb0ad}
+
 </style><link rel="manifest" href="manifest.webmanifest">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -656,6 +671,15 @@ main{max-width:720px;padding:14px 14px 108px}
     <button id="ptBody" onclick="setProgressTab('body')">CORPO</button>
     <button id="ptGoals" onclick="setProgressTab('goals')">TRAGUARDI</button>
   </div>
+  
+  <div class="advDash">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+      <div><b>📈 Progress Dashboard</b><div class="sub">Trend reali delle ultime 4 settimane.</div></div>
+      <button onclick="openAdvancedProgress()">APRI</button>
+    </div>
+    <div id="advProgressHome"></div>
+  </div>
+
   <div id="progressContent"></div>
 <div id="bodyDashboardWrap" class="hidden"></div><div id="milestoneWrap" class="hidden"></div>
 </div>
@@ -2537,7 +2561,124 @@ function openLastSessionSummary(){
  openSessionSummary(last);
 }
 
+
+function advSessionTime(s){
+ const v=s.startedAt||s.createdAt||s.date||0;
+ const n=Number(v);
+ if(Number.isFinite(n)&&n>100000000000)return n;
+ const d=Date.parse(v);
+ return Number.isFinite(d)?d:0;
+}
+function advProfileSessions(){
+ return (db.sessions||[]).filter(s=>!s.profile||s.profile===profile).slice().sort((a,b)=>advSessionTime(a)-advSessionTime(b));
+}
+function advStartOfWeek(ts){
+ const d=new Date(ts),day=(d.getDay()+6)%7;
+ d.setHours(0,0,0,0);d.setDate(d.getDate()-day);return d.getTime();
+}
+function advFourWeekStats(){
+ const nowStart=advStartOfWeek(Date.now()),start=nowStart-3*7*86400000;
+ const weeks=[0,1,2,3].map(i=>({start:start+i*7*86400000,end:start+(i+1)*7*86400000,sessions:0,sets:0,reps:0,rpes:[]}));
+ advProfileSessions().forEach(s=>{
+   const t=advSessionTime(s);
+   const w=weeks.find(x=>t>=x.start&&t<x.end);
+   if(!w)return;
+   w.sessions++;
+   (s.sets||[]).forEach(x=>{
+     w.sets++;
+     w.reps+=Number(x.reps)||0;
+     if(Number(x.rpe))w.rpes.push(Number(x.rpe));
+   });
+ });
+ weeks.forEach(w=>w.avgRpe=w.rpes.length?w.rpes.reduce((a,b)=>a+b,0)/w.rpes.length:0);
+ return weeks;
+}
+function advExerciseTrends(){
+ const map={};
+ advProfileSessions().forEach(s=>{
+   (s.sets||[]).forEach(x=>{
+     const n=String(x.exercise||"").trim();if(!n)return;
+     (map[n]||(map[n]=[])).push({t:advSessionTime(s),reps:Number(x.reps)||0});
+   });
+ });
+ return Object.entries(map).map(([name,rows])=>{
+   rows.sort((a,b)=>a.t-b.t);
+   const recent=rows.slice(-6),older=rows.slice(-12,-6);
+   const ravg=recent.length?recent.reduce((a,b)=>a+b.reps,0)/recent.length:0;
+   const oavg=older.length?older.reduce((a,b)=>a+b.reps,0)/older.length:ravg;
+   return {name,diff:ravg-oavg,recent:ravg,count:rows.length};
+ }).filter(x=>x.count>=3).sort((a,b)=>b.diff-a.diff);
+}
+function advancedProgressSummary(){
+ const weeks=advFourWeekStats(),cur=weeks[3],prev=weeks[2],trends=advExerciseTrends();
+ const improving=trends.filter(x=>x.diff>0.5).slice(0,4);
+ const declining=trends.filter(x=>x.diff<-0.5).slice(-3).sort((a,b)=>a.diff-b.diff);
+ const total4=weeks.reduce((a,w)=>a+w.sessions,0);
+ const sets4=weeks.reduce((a,w)=>a+w.sets,0);
+ const reps4=weeks.reduce((a,w)=>a+w.reps,0);
+ const allRpes=weeks.flatMap(w=>w.rpes);
+ const avgRpe=allRpes.length?allRpes.reduce((a,b)=>a+b,0)/allRpes.length:0;
+ const freqChange=prev.sessions?Math.round((cur.sessions-prev.sessions)*100/prev.sessions):(cur.sessions?100:0);
+ return {weeks,cur,prev,improving,declining,total4,sets4,reps4,avgRpe,freqChange};
+}
+function advancedProgressAdvice(a){
+ if(a.total4<4)return "Servono ancora alcune sessioni per costruire un trend affidabile.";
+ if(a.freqChange>25 && a.avgRpe>4.3)return "Frequenza e fatica stanno salendo insieme: mantieni stabile almeno una delle due variabili.";
+ if(a.improving.length>=2)return "Trend positivo: più esercizi stanno migliorando. Continua con progressioni piccole e regolari.";
+ if(a.freqChange<0)return "La frequenza è scesa: recupera prima la costanza, poi torna ad aumentare il carico.";
+ return "Andamento stabile: continua a usare Today Coach, Smart Progression e Recovery come guida.";
+}
+function renderAdvancedProgressHome(){
+ const box=document.getElementById("advProgressHome");if(!box)return;
+ const a=advancedProgressSummary(),max=Math.max(1,...a.weeks.map(w=>w.sessions));
+ box.innerHTML=`<div class="advGrid">
+   <div class="advMetric"><b>${a.total4}</b><span>SESSIONI / 4 SETT.</span></div>
+   <div class="advMetric"><b>${a.sets4}</b><span>SERIE TOTALI</span></div>
+ </div>
+ <div class="trendMini">${a.weeks.map(w=>`<div class="trendMiniBar" style="height:${Math.max(6,Math.round(w.sessions/max*68))}px"></div>`).join("")}</div>
+ <div class="trendLabels"><span>-3</span><span>-2</span><span>-1</span><span>ORA</span></div>`;
+}
+function openAdvancedProgress(){
+ const a=advancedProgressSummary(),maxSets=Math.max(1,...a.weeks.map(w=>w.sets));
+ const cls=a.freqChange>0?"advGood":a.freqChange<0?"advDown":"advFlat";
+ sheet.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center"><h2>📈 Progress Dashboard</h2><button onclick="modal.classList.add('hidden')">✕</button></div>
+ <div class="advGrid">
+   <div class="advMetric"><b>${a.total4}</b><span>SESSIONI 4 SETTIMANE</span></div>
+   <div class="advMetric"><b>${a.sets4}</b><span>SERIE TOTALI</span></div>
+   <div class="advMetric"><b>${a.reps4}</b><span>RIPETIZIONI TOTALI</span></div>
+   <div class="advMetric"><b>${a.avgRpe?a.avgRpe.toFixed(1):"-"}</b><span>RPE MEDIO</span></div>
+ </div>
+ <div class="card pad" style="margin-top:10px"><b>📊 Volume settimanale</b>
+   <div class="trendMini">${a.weeks.map(w=>`<div class="trendMiniBar" style="height:${Math.max(6,Math.round(w.sets/maxSets*68))}px"></div>`).join("")}</div>
+   <div class="trendLabels"><span>SETT. -3</span><span>-2</span><span>-1</span><span>ORA</span></div>
+   <div class="${cls}" style="font-size:11px;margin-top:8px">Frequenza vs settimana scorsa: ${a.freqChange>0?"+":""}${a.freqChange}%</div>
+ </div>
+ <div class="card pad" style="margin-top:10px"><b>🚀 Esercizi in miglioramento</b><div class="advList">
+ ${a.improving.length?a.improving.map(x=>`<div class="advItem"><div class="advItemTop"><span>${x.name}</span><b class="advGood">▲ +${x.diff.toFixed(1)}</b></div><div class="sub">Media recente ${x.recent.toFixed(1)} reps</div></div>`).join(""):'<div class="sub">Servono più dati per identificare miglioramenti solidi.</div>'}
+ </div></div>
+ ${a.declining.length?`<div class="card pad" style="margin-top:10px"><b>⚠️ Da tenere d'occhio</b><div class="advList">${a.declining.map(x=>`<div class="advItem"><div class="advItemTop"><span>${x.name}</span><b class="advDown">▼ ${Math.abs(x.diff).toFixed(1)}</b></div></div>`).join("")}</div></div>`:""}
+ <div class="balanceAdvice"><b>🧠 Lettura generale</b><div class="sub" style="margin-top:6px">${advancedProgressAdvice(a)}</div></div>
+ <div class="summaryActions"><button onclick="shareAdvancedProgress()">CONDIVIDI ↗</button><button onclick="modal.classList.add('hidden')">CHIUDI</button></div>`;
+ modal.classList.remove("hidden");
+}
+async function shareAdvancedProgress(){
+ const a=advancedProgressSummary();
+ const text=`FIT TOGETHER 💪
+Progress Dashboard – ultime 4 settimane
+Sessioni: ${a.total4}
+Serie: ${a.sets4}
+Ripetizioni: ${a.reps4}
+RPE medio: ${a.avgRpe?a.avgRpe.toFixed(1):"-"}
+Esercizi in miglioramento: ${a.improving.map(x=>x.name).join(", ")||"n/d"}
+${advancedProgressAdvice(a)}`;
+ try{
+   if(navigator.share)await navigator.share({title:"FIT TOGETHER – Progress Dashboard",text});
+   else{await navigator.clipboard.writeText(text);alert("Riepilogo copiato.");}
+ }catch(e){}
+}
+
 function renderProgress(){
+ setTimeout(renderAdvancedProgressHome,0);
  const lab=document.getElementById("progressProfileLabel");
  if(lab)lab.textContent=profile==="dad"?"Profilo: TU":"Profilo: FIGLIA";
  const content=document.getElementById("progressContent");
@@ -3066,7 +3207,9 @@ function renderNutrition(){
       <div class="suppBox"><h3>Pre-workout</h3><p class="note">Non necessario. Evita di affidarti a stimolanti per compensare sonno o recupero insufficienti.</p></div>`;
  }
 }
-function show(id){["home","phaseGuide","session","together","nutrition","progressPage","safety"].forEach(x=>document.getElementById(x).classList.toggle("hidden",x!==id));if(id==="progressPage"){progressTab="overview";renderProgress();if(id==="nutrition"){nutriTab="today";renderNutrition();}}if(id==="home")renderHome()}
+function show(id){["home","phaseGuide","session","together","nutrition","progressPage","safety"].forEach(x=>document.getElementById(x).classList.toggle("hidden",x!==id));if(id==="progressPage"){progressTab="overview";renderProgress();if(id==="nutrition"){nutriTab="today";renderNutrition();}}if(id==="home")renderHome()
+ if(id==="progressPage")setTimeout(renderAdvancedProgressHome,0);
+}
 function renderHistory(){let ss=profileSessions().slice().reverse();history.innerHTML=ss.length?ss.map(s=>`<div class="card pad"><b>Allenamento ${s.day}</b><div class="sub">${new Date(s.ts).toLocaleString("it-IT")}</div><div class="chips"><span class="chip">⏱ ${fmtTime(s.durationSec)}</span><span class="chip">🔥 ${s.kcal} kcal stimate</span></div></div>`).join(""):'<p class="note">Ancora nessun allenamento registrato.</p>'}
 function openStats(){
  const bh=backupHealth();let s=stats();sheet.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center"><h2>Statistiche live</h2><button onclick="modal.classList.add('hidden')">✕</button></div><div class="statline"><div class="stat"><b>${s.sessions}</b><small>Allenamenti</small></div><div class="stat"><b>${fmtTime(s.totalSec)}</b><small>Tempo totale</small></div><div class="stat"><b>${s.kcal}</b><small>kcal stimate</small></div><div class="stat"><b>${s.streak}</b><small>Streak</small></div></div><div class="card pad"><b>Settimana</b><p>${s.weekDone}/3 allenamenti completati</p></div>`;sheet.innerHTML+=`<div class="card pad"><b>💾 Protezione dati</b><p class="note">${bh.sessions} sessioni · ${bh.keys} gruppi dati locali. Ultimo backup: ${localStorage.getItem("ftLastBackup")?new Date(localStorage.getItem("ftLastBackup")).toLocaleString("it-IT"):"mai"}.</p></div>`;
@@ -3178,7 +3321,7 @@ function openSettings(){
  <div class="card pad">
   <button style="width:100%" onclick="if(confirm('Azzero tutti i dati salvati?')){clearAllFitData();modal.classList.add('hidden');renderHome()}">Azzera tutti i dati</button>
  </div>
- <div class="card pad"><p class="note">I dati vengono salvati localmente su questo dispositivo/browser.</p><p class="note"><b>Versione: V32 Exercise Balance</b></p></div>`;
+ <div class="card pad"><p class="note">I dati vengono salvati localmente su questo dispositivo/browser.</p><p class="note"><b>Versione: V33 Advanced Progress Dashboard</b></p></div>`;
  modal.classList.remove("hidden")
 }
 
