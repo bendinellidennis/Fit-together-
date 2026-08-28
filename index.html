@@ -2281,8 +2281,11 @@ function start(day){
 }
 function mediaBlock(type,name){
  const src=media[type];
- if(!src)return `<div class="infoPanel" style="margin:10px 0"><b>✅ CORPO LIBERO</b><br>Per <b>${name}</b> segui la spiegazione specifica “COME FARLO” qui sotto.</div>`;
- return `<div class="video"><span class="badge">▶️ VIDEO DEL MOVIMENTO</span><video src="${src}" autoplay muted loop playsinline controls preload="metadata"></video></div>`;
+ const key=encodeURIComponent(`${name||"exercise"}-${type||"none"}`);
+ if(!src)return `<div class="infoPanel" style="margin:10px 0" data-exercise-media="${key}"><b>✅ CORPO LIBERO</b><br>Per <b>${name}</b> segui la spiegazione specifica “COME FARLO” qui sotto.</div>`;
+ const sep=src.includes("?")?"&":"?";
+ const freshSrc=`${src}${sep}ft_ex=${key}`;
+ return `<div class="video" data-exercise-media="${key}"><span class="badge">▶️ VIDEO DEL MOVIMENTO</span><video src="${freshSrc}" autoplay muted loop playsinline controls preload="metadata"></video></div>`;
 }
 
 function exerciseInfo(e){
@@ -2400,6 +2403,13 @@ function applyExerciseSwap(i){
  sessionWorkout=w;
  saveLiveDraft();
  modal.classList.add("hidden");
+ 
+ try{
+   document.querySelectorAll("#exerciseView video").forEach(v=>{
+     try{v.pause();v.removeAttribute("src");v.load()}catch(e){}
+   });
+ }catch(e){}
+
  renderExercise();
  speakCoach?.(`Esercizio sostituito con ${replacement[0]}.`);
 }
@@ -3641,7 +3651,7 @@ function openSettings(){
  <div class="card pad">
   <button style="width:100%" onclick="if(confirm('Azzero tutti i dati salvati?')){clearAllFitData();modal.classList.add('hidden');renderHome()}">Azzera tutti i dati</button>
  </div>
- <div class="card pad"><p class="note">I dati vengono salvati localmente su questo dispositivo/browser.</p><p class="note"><b>Versione: V38 Bodyweight Rebuild</b></p></div>`;
+ <div class="card pad"><p class="note">I dati vengono salvati localmente su questo dispositivo/browser.</p><p class="note"><b>Versione: V38.1 Swap Media Fix</b></p></div>`;
  modal.classList.remove("hidden")
 }
 
