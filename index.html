@@ -509,6 +509,14 @@ main{max-width:720px;padding:14px 14px 108px}
  .homeCompactProgress .ring{width:76px!important;height:76px!important;min-width:76px!important}
 }
 
+
+/* V36.3 WORKOUT MUSIC */
+.musicBox{background:linear-gradient(145deg,#1c1030,#101a29);border:1px solid #7354c9;border-radius:15px;padding:10px;margin:8px 0}
+.musicTop{display:flex;align-items:center;justify-content:space-between;gap:8px}.musicTitle{font-size:11px;font-weight:950}.musicNow{font-size:9px;color:#b9a5f3;margin-top:2px}
+.musicControls{display:grid;grid-template-columns:42px 1fr 42px;gap:6px;align-items:center;margin-top:8px}.musicPlay{height:36px;border-radius:12px;padding:0!important;font-size:15px!important}
+.musicSelect{width:100%;background:#0b1420;color:#fff;border:1px solid #34475e;border-radius:10px;padding:8px;font-size:10px;font-weight:800}.musicVol{width:100%;margin-top:7px;accent-color:#8f70e3}
+.musicMini{display:flex;justify-content:space-between;font-size:8px;color:#8796aa;margin-top:3px}
+
 </style><link rel="manifest" href="manifest.webmanifest">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -591,7 +599,12 @@ main{max-width:720px;padding:14px 14px 108px}
 <div id="workouts"></div>
 <div class="homeGroupTitle">LIBRERIA<span>preferiti e schede personali</span></div><div id="favoriteQuick" class="sub" style="margin-top:8px"></div>
 <div id="customQuick" class="sub" style="margin-top:8px"></div>
-<div class="homeGroupTitle">COACH & STRUMENTI<span>supporto e controllo</span></div><div class="voiceBox" id="voiceHomeCard">
+<div class="homeGroupTitle">COACH & STRUMENTI<span>supporto e controllo</span></div><div class="musicBox">
+ <div class="musicTop"><div><div class="musicTitle">🔥 WORKOUT MUSIC</div><div id="musicNow" class="musicNow">POWER DRIVE · 142 BPM</div></div><button id="musicTopToggle" onclick="toggleWorkoutMusic()">▶ PLAY</button></div>
+ <div class="musicControls"><button class="musicPlay" onclick="musicPrev()">⏮</button><select id="musicTrackSelect" class="musicSelect" onchange="selectMusicTrack(this.value)"><option value="0">⚡ POWER DRIVE · 142</option><option value="1">🔥 BEAST MODE · 150</option><option value="2">🏃 CARDIO ENERGY · 158</option><option value="3">🎯 FOCUS FIRE · 136</option><option value="4">💥 NO EXCUSES · 154</option><option value="5">🚀 UNSTOPPABLE · 148</option><option value="6">🏋️ IRON PULSE · 146</option><option value="7">🏁 FINAL REP · 160</option><option value="8">⚔️ WARRIOR MODE · 152</option><option value="9">⚡ ADRENALINE · 164</option><option value="10">⬆️ RISE UP · 144</option><option value="11">🔥 FULL POWER · 156</option><option value="12">🏃 SPRINT ATTACK · 168</option><option value="13">💪 STRONGER · 150</option><option value="14">🚀 PUSH THE LIMIT · 162</option><option value="15">🔥 NEVER STOP · 158</option><option value="16">⚔️ BATTLE READY · 148</option><option value="17">🔥 FIRE INSIDE · 154</option><option value="18">🏁 LAST ROUND · 166</option><option value="19">🏆 VICTORY RUN · 160</option></select><button class="musicPlay" onclick="musicNext()">⏭</button></div>
+ <input id="musicVolume" class="musicVol" type="range" min="0" max="100" value="72" oninput="setWorkoutMusicVolume(this.value)"><div style="display:flex;gap:6px;margin-top:7px"><button style="flex:1" onclick="musicRandom()">🎲 CASUALE</button><button style="flex:1" id="musicAutoBtn" onclick="toggleMusicAuto()">🔁 AUTO ON</button></div><div class="musicMini"><span>VOLUME</span><span id="musicVolLabel">72%</span></div>
+</div>
+<div class="voiceBox" id="voiceHomeCard">
   <div class="row" style="display:flex;justify-content:space-between;align-items:center;gap:10px">
     <div>
       <b>🔊 Coach Vocale</b>
@@ -2096,7 +2109,37 @@ function recoverInvalidLiveDraft(){
  }
 }
 
+
+const ftMusicTracks=['music/power_drive.mp3', 'music/beast_mode.mp3', 'music/cardio_energy.mp3', 'music/focus_fire.mp3', 'music/no_excuses.mp3', 'music/unstoppable.mp3', 'music/iron_pulse.mp3', 'music/final_rep.mp3', 'music/warrior_mode.mp3', 'music/adrenaline.mp3', 'music/rise_up.mp3', 'music/full_power.mp3', 'music/sprint_attack.mp3', 'music/stronger.mp3', 'music/push_limit.mp3', 'music/never_stop.mp3', 'music/battle_ready.mp3', 'music/fire_inside.mp3', 'music/last_round.mp3', 'music/victory_run.mp3'],ftMusicTitles=['POWER DRIVE', 'BEAST MODE', 'CARDIO ENERGY', 'FOCUS FIRE', 'NO EXCUSES', 'UNSTOPPABLE', 'IRON PULSE', 'FINAL REP', 'WARRIOR MODE', 'ADRENALINE', 'RISE UP', 'FULL POWER', 'SPRINT ATTACK', 'STRONGER', 'PUSH THE LIMIT', 'NEVER STOP', 'BATTLE READY', 'FIRE INSIDE', 'LAST ROUND', 'VICTORY RUN'],ftMusicBpms=[142, 150, 158, 136, 154, 148, 146, 160, 152, 164, 144, 156, 168, 150, 162, 158, 148, 154, 166, 160];
+let ftMusicIndex=Math.max(0,Math.min(ftMusicTracks.length-1,Number(localStorage.getItem("ftMusicTrack")||0)));
+let ftMusicVolume=Math.max(0,Math.min(1,Number(localStorage.getItem("ftMusicVolume")||.72)));
+let ftMusicDucked=false;
+const ftWorkoutAudio=new Audio(ftMusicTracks[ftMusicIndex]);ftWorkoutAudio.loop=false;ftWorkoutAudio.preload="auto";ftWorkoutAudio.volume=ftMusicVolume;
+function renderWorkoutMusic(){
+ const n=document.getElementById("musicNow"),s=document.getElementById("musicTrackSelect"),v=document.getElementById("musicVolume"),l=document.getElementById("musicVolLabel"),b=document.getElementById("musicTopToggle");
+ if(n)n.textContent=ftMusicTitles[ftMusicIndex]+" · "+ftMusicBpms[ftMusicIndex]+" BPM";if(s)s.value=ftMusicIndex;if(v)v.value=Math.round(ftMusicVolume*100);if(l)l.textContent=Math.round(ftMusicVolume*100)+"%";if(b)b.textContent=ftWorkoutAudio.paused?"▶ PLAY":"⏸ PAUSA";const ab=document.getElementById("musicAutoBtn");if(ab)ab.textContent=ftMusicAuto?"🔁 AUTO ON":"🔁 AUTO OFF";
+}
+function toggleWorkoutMusic(){if(ftWorkoutAudio.paused)ftWorkoutAudio.play().then(renderWorkoutMusic).catch(()=>{});else{ftWorkoutAudio.pause();renderWorkoutMusic();}}
+function selectMusicTrack(v){let play=!ftWorkoutAudio.paused;ftMusicIndex=Math.max(0,Math.min(ftMusicTracks.length-1,Number(v)||0));localStorage.setItem("ftMusicTrack",ftMusicIndex);ftWorkoutAudio.src=ftMusicTracks[ftMusicIndex];ftWorkoutAudio.loop=false;ftWorkoutAudio.volume=ftMusicVolume;if(play)ftWorkoutAudio.play().catch(()=>{});renderWorkoutMusic();}
+function musicNext(){selectMusicTrack((ftMusicIndex+1)%ftMusicTracks.length)} function musicPrev(){selectMusicTrack((ftMusicIndex-1+ftMusicTracks.length)%ftMusicTracks.length)}
+function setWorkoutMusicVolume(v){ftMusicVolume=Math.max(0,Math.min(1,(Number(v)||0)/100));ftWorkoutAudio.volume=ftMusicVolume;localStorage.setItem("ftMusicVolume",ftMusicVolume);renderWorkoutMusic();}
+function duckWorkoutMusic(){if(!ftWorkoutAudio.paused){ftMusicDucked=true;ftWorkoutAudio.volume=Math.min(.14,ftMusicVolume);}}
+function restoreWorkoutMusic(){if(ftMusicDucked){ftWorkoutAudio.volume=ftMusicVolume;ftMusicDucked=false;}}
+
+let ftMusicAuto=localStorage.getItem("ftMusicAuto")!=="0";
+function musicRandom(){
+ let n=ftMusicIndex;
+ if(ftMusicTracks.length>1)while(n===ftMusicIndex)n=Math.floor(Math.random()*ftMusicTracks.length);
+ selectMusicTrack(n);
+}
+function toggleMusicAuto(){
+ ftMusicAuto=!ftMusicAuto;localStorage.setItem("ftMusicAuto",ftMusicAuto?"1":"0");renderWorkoutMusic();
+}
+ftWorkoutAudio.addEventListener("play",renderWorkoutMusic);ftWorkoutAudio.addEventListener("pause",renderWorkoutMusic);
+ftWorkoutAudio.addEventListener("ended",()=>{if(ftMusicAuto){musicRandom();ftWorkoutAudio.play().catch(()=>{});}else{ftWorkoutAudio.currentTime=0;}});
+
 function renderHome(){
+ setTimeout(renderWorkoutMusic,0);
  sanitizeDatabase();
  recoverInvalidLiveDraft();
  setTimeout(renderReliabilityHome,0);
@@ -3437,6 +3480,7 @@ function updateVoiceButtons(){
  if(s)s.textContent=on?"Coach vocale attivo":"Coach vocale disattivato";
 }
 function speakCoach(text,force=false){
+ duckWorkoutMusic();
  if((!voiceCoachEnabled()&&!force) || !text || !("speechSynthesis" in window))return;
  try{
    window.speechSynthesis.cancel();
@@ -3445,7 +3489,7 @@ function speakCoach(text,force=false){
    u.rate=0.95;
    u.pitch=1.0;
    u.volume=1.0;
-   window.speechSynthesis.speak(u);
+   window.setTimeout(restoreWorkoutMusic,2200);speechSynthesis.speak(u);
  }catch(e){}
 }
 function speakExerciseIntro(e){
@@ -3519,7 +3563,7 @@ function openSettings(){
  <div class="card pad">
   <button style="width:100%" onclick="if(confirm('Azzero tutti i dati salvati?')){clearAllFitData();modal.classList.add('hidden');renderHome()}">Azzera tutti i dati</button>
  </div>
- <div class="card pad"><p class="note">I dati vengono salvati localmente su questo dispositivo/browser.</p><p class="note"><b>Versione: V36.2 Home Compact Order</b></p></div>`;
+ <div class="card pad"><p class="note">I dati vengono salvati localmente su questo dispositivo/browser.</p><p class="note"><b>Versione: V36.4 Motivational Music Library</b></p></div>`;
  modal.classList.remove("hidden")
 }
 
